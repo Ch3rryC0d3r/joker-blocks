@@ -233,7 +233,7 @@ Blockly.Blocks['givex'].init = function() {
 };
 
 Blockly.Blocks['game_value_set'].init = function() {
-  this.setColour('#5CB85C');
+  this.setColour('#286b9e');
   this.appendDummyInput()
       .appendField('Set Game value')
       .appendField(new Blockly.FieldDropdown([
@@ -265,7 +265,7 @@ Blockly.Blocks['repeater'].init = function() {
 };
 
 Blockly.Blocks['card_issuit'].init = function() {
-  this.setColour('#5cb85c');
+  this.setColour('#725cb8');
   this.setOutput(true, 'Boolean');
 
   this.appendValueInput('card')
@@ -273,18 +273,31 @@ Blockly.Blocks['card_issuit'].init = function() {
 
   this.appendDummyInput()
       .appendField('is suit')
-      .appendField(new Blockly.FieldDropdown([
-        ['Clubs','"Clubs"'],
-        ['Diamonds','"Diamonds"'],
-        ['Spades','"Spades"'],
-        ['Hearts','"Hearts"'],
-      ]), 'suit');    
+
+  this.appendValueInput('suit')
+      .setCheck('Suit');     
+
+  this.setInputsInline(true);
+};
+
+Blockly.Blocks['card_isrank'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck('Card');
+
+  this.appendDummyInput()
+      .appendField('is rank')
+
+  this.appendValueInput('rank')
+      .setCheck('Rank');     
 
   this.setInputsInline(true);
 };
 
 Blockly.Blocks['joker_amt'].init = function() {
-  this.setColour('#5cb85c');
+  this.setColour('#40a5aa');
   this.setOutput(true, 'Number');
 
   this.appendDummyInput()
@@ -297,33 +310,27 @@ Blockly.Blocks['joker_amt'].init = function() {
       .appendField('Jokers held')
       
   this.setInputsInline(true);
-  this.setTooltip('Calculates how many jokers of the given `id` is currently "held".');
+  this.setTooltip('Calculates how many jokers of the given `id` is currently held.');
 };
 
 Blockly.Blocks['pseudorandom'].init = function() {
-  this.setColour('#5cb85c');
+  this.setColour('#40a5aa');
   this.setOutput(true, 'Number');
 
   this.appendDummyInput()
-      .appendField('Random value between')
+      .appendField('Pick random')
 
   this.appendValueInput('a')
       .setCheck(null);
 
   this.appendDummyInput()
-      .appendField('and')
+      .appendField('to')
 
   this.appendValueInput('b')
       .setCheck(null);
-      
-  this.appendDummyInput()
-      .appendField('with Seed')      
 
-  this.appendValueInput('seed')
-      .setCheck(null);      
-      
   this.setInputsInline(true);
-  this.setTooltip('Calculates how many jokers of the given `id` is currently "held".');
+  this.setTooltip('Returns a random value between two (Random Seed).');
 };
 
 // helper to build dropdown menu

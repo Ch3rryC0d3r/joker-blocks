@@ -94,7 +94,7 @@ function genLuaFromTemplate(template, block) {
   // clean up multiple blank lines
   result = result.replace(/\n{3,}/g, '\n\n');
 
-  // --- merge multiple "return { ... }" blocks if they exist ---
+  // --- merge multiple "return { ..x }" blocks if they exist ---
   {
     const returnMatches = [...result.matchAll(/return\s*\{([^}]*)\}/g)];
     if (returnMatches.length > 1) {
@@ -133,7 +133,7 @@ Blockly.Lua.forBlock['not'] = function(block) {
         conditionCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `not (${conditionCode})`;
+    const code = `(not (${conditionCode}))`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -154,7 +154,7 @@ Blockly.Lua.forBlock['and'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `(${leftCode}) and (${rightCode})`;
+    const code = `((${leftCode}) and (${rightCode}))`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -175,7 +175,7 @@ Blockly.Lua.forBlock['or'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `(${leftCode}) or (${rightCode})`;
+    const code = `((${leftCode}) or (${rightCode}))`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -235,6 +235,24 @@ Blockly.Lua.forBlock['givex'] = function(block) {
 Blockly.Lua.forBlock['check_suit'] = function(block) {
   const suit = block.getFieldValue('suit');
   return [`context.other_card:is_suit('${suit}')`, Blockly.Lua.ORDER_ATOMIC];
+};
+
+Blockly.Lua.forBlock['pseudorandom'] = function(block) {
+  const a = block.getFieldValue('a') || 'nil';
+  const b = block.getFieldValue('b') || 'nil';
+  function generateRandomString(length) {
+    const characters = `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
+    let result = '';
+    for (let i = 0; i < length; i++) {
+      const randomIndex = Math.floor(Math.random() * characters.length);
+      result += characters.charAt(randomIndex);
+    }
+    return result;
+  }
+
+  const seed = generateRandomString(10)
+
+  return [`psuedorandom("${seed}" .. G.GAME.round, ${a}, ${b})`, Blockly.Lua.ORDER_ATOMIC];
 };
 
 Blockly.Lua.forBlock['minus'] = function(block) {
@@ -432,7 +450,7 @@ Blockly.Lua.forBlock['game_conditions'] = function(block) {
         case 'ready repeat':
             return ['context.repetition and context.cardarea == G.play', Blockly.Lua.ORDER_ATOMIC];                                    
         default:
-            return ['false', Blockly.Lua.ORDER_ATOMIC];
+            return [condition, Blockly.Lua.ORDER_ATOMIC];
     }
 };
 

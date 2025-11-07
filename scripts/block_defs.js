@@ -50,24 +50,13 @@ function GameObjectBlocks() {
     ];
 }
 
-function LogicBlocks() {
+function ConditionBlocks() {
     return [
-        {
-            type: 'text_value',
-            title: '',
-            category: 'Logic',
-            color: '#5cb85c',
-            output: 'String',
-            tooltip: 'Outputs whatever text you type.',
-            fields: [
-                { name: 'val', label: '', type: 'text', default: '     ' }
-            ]
-        },        
         {
             type: 'blind_conditions',
             title: 'Blind condition',
-            category: 'Logic',
-            color: '#5cb85c',
+            category: 'Conditions',
+            color: '#725cb8',
             output: 'Boolean',
             tooltip: 'Blind-related conditions',
             fields: [
@@ -85,8 +74,8 @@ function LogicBlocks() {
         {
             type: 'joker_conditions',
             title: 'Joker condition',
-            category: 'Logic',
-            color: '#5cb85c',
+            category: 'Conditions',
+            color: '#725cb8',
             output: 'Boolean',
             tooltip: 'Joker-related conditions',
             fields: [
@@ -104,8 +93,8 @@ function LogicBlocks() {
         {
             type: 'card_conditions',
             title: 'Card condition',
-            category: 'Logic',
-            color: '#5cb85c',
+            category: 'Conditions',
+            color: '#725cb8',
             output: 'Boolean',
             tooltip: 'Card-related (Jokers, Spectrals, Tarots, etc.) conditions',
             fields: [
@@ -122,8 +111,8 @@ function LogicBlocks() {
         {
             type: 'game_conditions',
             title: 'Game condition',
-            category: 'Logic',
-            color: '#5cb85c',
+            category: 'Conditions',
+            color: '#725cb8',
             output: 'Boolean',
             tooltip: 'General/Game conditions, `Not Blueprint` is used if you don\'t want Blueprint/Brainstorm to copy that area of code.',
             fields: [
@@ -137,7 +126,7 @@ function LogicBlocks() {
                         ['After scoring','after scoring'],
                         ['A card was sold','card sold'],
                         ['A card is scoring','card score'],   
-                         
+                        ['Round ended (won)','context.end_of_round and context.game_over == false and context.main_eval']
                                
                     ]
                 }
@@ -146,8 +135,8 @@ function LogicBlocks() {
         {
             type: 'context_check',
             title: 'Context',
-            category: 'Logic',
-            color: '#5cb85c',
+            category: 'Conditions',
+            color: '#725cb8',
             output: 'Boolean',
             lua: '[[condition]]',
             fields: [
@@ -167,8 +156,8 @@ function LogicBlocks() {
         {
             type: 'contain_hand_type',
             title: 'Hand Type',
-            category: 'Logic',
-            color: '#5cb85c',
+            category: 'Conditions',
+            color: '#725cb8',
             output: 'Boolean',
             tooltip: 'Checks if played hand contains a specific poker hand',
             fields: [
@@ -178,14 +167,49 @@ function LogicBlocks() {
         {
             type: 'exact_hand_type',
             title: 'Played Poker Hand',
-            category: 'Logic',
-            color: '#5cb85c',
+            category: 'Conditions',
+            color: '#725cb8',
             output: 'Boolean',
             tooltip: 'Checks if the type of played poker hand is a poker hand',
             fields: [
                 { name: 'condition', label: 'is', type: 'dropdown', options: ["High Card","Flush","Flush Five","Full House","Pair","Three of a Kind","Four of a Kind","Straight","Straight Flush","Two Pair","Five of a Kind","Flush House","Most Played Hand","Least Played Hand"] },
             ]
-        },                     
+        },
+        {
+            type: 'card_issuit',
+            title: 'Currently scoring card',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: '[[card]]:is_suit([[suit]])',
+            output: 'Boolean',
+            tooltip: 'Whether or not `card` is `suit` (`card` is the left input socket, `suit` is on the right)',
+        },  
+        {
+            type: 'card_isrank',
+            title: 'Currently scoring card',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: '[[card]]:get_id() == [[rank]]',
+            output: 'Boolean',
+            tooltip: 'Whether or not `card` is `rank` (`card` is the left input socket, `rank` is on the right)',
+        },                                      
+    ]
+}
+
+function LogicBlocks() {
+    return [
+        {
+            type: 'text_value',
+            title: '',
+            category: 'Logic',
+            color: '#5cb85c',
+            output: 'String',
+            tooltip: 'Outputs whatever text you type.',
+            fields: [
+                { name: 'val', label: '', type: 'text', default: '     ' }
+            ]
+        },        
+                   
         {
             type: 'not',
             title: 'not',
@@ -282,7 +306,7 @@ function LogicBlocks() {
             type: 'game_value',
             title: 'Game Value',
             category: 'Logic',
-            color: '#5cb85c',
+            color: '#40a5aa',
             output: 'Number',
             tooltip: 'Gets various game state values.',
             fields: [
@@ -302,7 +326,7 @@ function LogicBlocks() {
                         ['Empty Joker Slots','(G.jokers.config.card_limit - #G.jokers.cards)'],
                         ['Maximum Bankruptcy','G.GAME.bankrupt_at'],
                         ['Chance Numerator','context.numerator'],
-                        ['Chance Denominator','context.denominator']
+                        ['Chance Denominator','context.denominator'],
                     ]
                 }
             ]
@@ -311,23 +335,67 @@ function LogicBlocks() {
             type: 'joker_amt',
             title: 'Amount',
             category: 'Logic',
-            color: '#5cb85c',
+            color: '#40a5aa',
             output: 'Number',
             lua: '#SMODS.find_card("[[a]]", true))'
         },   
         {
             type: 'pseudorandom',
-            title: 'Random value between',
+            title: 'Pick random',
             category: 'Logic',
-            color: '#5cb85c',
+            color: '#40a5aa',
             output: 'Number',
-            lua: 'psuedorandom("[[seed]]", [[a]], [[b]])'
-        },              
+            //lua: 'psuedorandom("[[seed]]", [[a]], [[b]])'
+        },        
+        {
+            type: 'rand_suit',
+            title: 'Random Suit',
+            category: 'Logic',
+            color: '#40a5aa',
+            output: 'Suit',
+            lua: `(function()
+    if G.playing_cards then
+        local valid_suitvar_cards = {}
+        for _, v in ipairs(G.playing_cards) do
+            if not SMODS.has_no_suit(v) then
+                valid_suitvar_cards[#valid_suitvar_cards + 1] = v
+            end
+        end
+        if valid_suitvar_cards[1] then
+            local suitvar_card = pseudorandom_element(valid_suitvar_cards, pseudoseed('suitvar' .. G.GAME.round_resets.ante))
+            return suitvar_card
+        end
+    end
+end)()`,
+            tooltip: 'Returns a valid random suit (Valid means in your deck)'
+        },      
+        {
+            type: 'rand_rank',
+            title: 'Random Rank',
+            category: 'Logic',
+            color: '#40a5aa',
+            output: 'Rank',
+            lua: `(function()
+    if G.playing_cards then
+        local valid_rankvar_cards = {}
+        for _, v in ipairs(G.playing_cards) do
+            if not SMODS.has_no_rank(v) then
+                valid_rankvar_cards[#valid_rankvar_cards + 1] = v
+            end
+        end
+        if valid_rankvar_cards[1] then
+            local rankvar_card = pseudorandom_element(valid_rankvar_cards, pseudoseed('rankvar' .. G.GAME.round_resets.ante))
+            return rankvar_card
+        end
+    end
+end)()`,
+            tooltip: 'Returns a valid random rank (Valid means in your deck)',
+        },                  
         {
             type: 'sc_card',
             title: 'Currently scoring card',
             category: 'Logic',
-            color: '#40aa80',
+            color: '#40a5aa',
             output: 'Card',
             lua: 'context.other_card',
             tooltip: 'Returns the currently scoring card, usually.',
@@ -336,25 +404,61 @@ function LogicBlocks() {
             type: 'card_count',
             title: 'Amount of played cards',
             category: 'Logic',
-            color: '#40aa80',
+            color: '#40a5aa',
             lua: '#context.full_hand',
             output: 'Number',
             tooltip: 'Returns the amount of cards played.',
         },    
         {
-            type: 'card_issuit',
-            title: 'Currently scoring card',
+            type: 'suit_return',
+            title: '',
             category: 'Logic',
-            color: '#5cb85c',
-            lua: '[[card]]:is_suit([[suit]])',
-            output: 'Boolean',
-            tooltip: 'Returns the currently scoring card, usually.',
-        },                                               
+            color: '#40a5aa',
+            lua: '[[suit]]',
+            output: 'Suit',
+            tooltip: 'Returns a suit.',
+            fields: [
+                { name: 'suit', label: 'Suit', type: 'dropdown', options: [
+                    [`Clubs`,`'Clubs'`],
+                    [`Diamonds`,`'Diamonds'`],
+                    [`Spades`,`'Spades'`],
+                    [`Hearts`,`'Hearts'`],
+                ]
+            }
+            ]
+        },            
+        {
+            type: 'rank_return',
+            title: '',
+            category: 'Logic',
+            color: '#40a5aa',
+            lua: '[[rank]]',
+            output: 'Rank',
+            tooltip: 'Returns a rank.',
+            fields: [
+                { name: 'rank', label: 'Rank', type: 'dropdown', options: [
+                    [`10`,`'10'`],
+                    [`9`,`'9'`],
+                    [`8`,`'8'`],
+                    [`7`,`'7'`],
+                    [`6`,`'6'`],
+                    [`5`,`'5'`],
+                    [`4`,`'4'`],
+                    [`3`,`'3'`],
+                    [`2`,`'2'`],
+                    [`Ace`,`'Ace'`],
+                    [`King`,`'King'`],
+                    [`Queen`,`'Queen'`],
+                    [`Jack`,`'Jack'`],                                                         
+                ]
+            }
+            ]
+        },                                      
         {
             type: 'limit',
             title: 'Limit',
             category: 'Logic',
-            color: '#5cb85c',
+            color: '#40a5aa',
             output: 'Number',
             valueInputs: [
                 { name: 'val', label: 'Value', check: null },
@@ -364,14 +468,7 @@ function LogicBlocks() {
             tooltip: 'Limits a value to a maximum by returning the higher of the two (math.max).'
         },      
                 
-        {
-            type: 'game_value_set',
-            title: 'Set Game Value',
-            category: 'Logic',
-            color: '#5CB85C',
-            lua: '[[var]] = [[val]]',
-            tooltip: 'Sets various game values.',
-        },         
+         
     ]
 }
 
@@ -395,7 +492,7 @@ function VarBlocks() {
             category: 'Variables',
             color: '#f0ad4e',
             tooltip: 'Sets a variable to a specific value.',
-            lua: `local [[VAR]] = [[VALUE]]\n`,
+            lua: `G.GAME.current_round.[[VAR]] = [[VALUE]]\n`,
             fields: [
                 { name: 'VAR', label: '', type: 'dropdown_dynamic', source: 'variables' }
             ],
@@ -409,7 +506,7 @@ function VarBlocks() {
             category: 'Variables',
             color: '#f0ad4e',
             tooltip: 'Adds a value to a numeric variable.',
-            lua: `local [[VAR]] = ([[VAR]] or 0) + ([[DELTA]])\n`,
+            lua: `G.GAME.current_round.[[VAR]] = (G.GAME.current_round.[[VAR]] or 0) + ([[DELTA]])\n`,
             fields: [
                 { name: 'VAR', label: '', type: 'dropdown_dynamic', source: 'variables' }
             ],
@@ -465,7 +562,7 @@ function ControlBlocks() {
 }
 
 function GeneralBlocks() {
-  return [ 
+  return [    
         {
             type: 'gen_loc_txt',
             title: 'Properties: ',
@@ -609,7 +706,15 @@ function GeneralBlocks() {
             valueInputs: [
                 { name: 'val', label: 'to', check: null }
             ]
-        },                                                         
+        },   
+        {
+            type: 'game_value_set',
+            title: 'Set Game Value',
+            category: 'General',
+            color: '#286b9e',
+            lua: '[[var]] = [[val]]',
+            tooltip: 'Sets various game values.',
+        },                                                               
   ];
 }
 
@@ -1025,6 +1130,8 @@ const BLOCK_DEFS = [
     ...TagBlocks(),
     ...JokerFunctionBlocks(),
     ...LogicBlocks(),
+    ...ConditionBlocks(),
+    
     ...AtlasFunctionBlocks(),
     ...BlindFunctionBlocks(),
     ...SoundFunctionBlocks(),

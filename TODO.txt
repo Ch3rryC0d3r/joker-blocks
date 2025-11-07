@@ -1,0 +1,8 @@
+1. Add Dark/Light mode options,
+
+2. Make `ceremonial_dagger` joker,
+
+3. Make `destroy_card`block [[SMODS.destroy_cards()]] 
+   options: [ left, right, rightmost, leftmost, left and right, leftmost and rightmost ]
+
+4. Make stuff like `Joker card, index (1)` or Playing Card (in scoring) or Playing Card (in hand), etc.
