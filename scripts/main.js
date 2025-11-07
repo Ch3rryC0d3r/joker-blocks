@@ -64,6 +64,13 @@ window.customVariables = JSON.parse(localStorage.getItem("customVariables") || "
 function saveVariables() {
   localStorage.setItem("customVariables", JSON.stringify(window.customVariables));
 }
+function saveVariableScopes() {
+  localStorage.setItem("variableScopes", JSON.stringify(window.variableScopes || {}));
+}
+
+function loadVariableScopes() {
+  window.variableScopes = JSON.parse(localStorage.getItem("variableScopes") || "{}");
+}
 
 // popup for creating new variables
 function createNewVariablePopup(onDone) {
@@ -527,39 +534,73 @@ window.addEventListener("load", () => {
       varList.innerHTML = '<p style="text-align:center;color:#aaa;">No variables yet.</p>';
       return;
     }
+    
+    // Initialize variable scopes if not exists
+    if (!window.variableScopes) {
+      window.variableScopes = {};
+    }
+    
     window.customVariables.forEach((v, i) => {
       const row = document.createElement('div');
-      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin:3px 0;padding:4px 6px;border-bottom:1px solid #333;';
+      row.style.cssText = 'display:flex;align-items:center;justify-content:space-between;margin:3px 0;padding:4px 6px;border-bottom:1px solid #333;gap:8px;';
       
+      // Name input
       const nameInput = document.createElement('input');
       nameInput.value = v;
-      nameInput.style.cssText = 'flex:1;margin-right:8px;padding:4px;border:none;border-radius:4px;';
+      nameInput.style.cssText = 'flex:1;padding:4px;border:none;border-radius:4px;min-width:100px;';
       nameInput.onchange = () => {
         const newName = nameInput.value.trim().replace(/\s+/g, '_');
         nameInput.value = newName;
 
         if (!newName) return;
         if (window.customVariables.includes(newName)) return alert('That name already exists.');
+        
+        // Preserve scope when renaming
+        const oldScope = window.variableScopes[v] || 'global';
+        delete window.variableScopes[v];
+        window.variableScopes[newName] = oldScope;
+        
         window.customVariables[i] = newName;
         refreshVariableDropdowns();
         saveVariables();
-
+        renderVarList();
       };
       
+      // Scope dropdown
+      const scopeDropdown = document.createElement('select');
+      scopeDropdown.style.cssText = 'padding:4px;border:none;border-radius:4px;background:#333;color:#fff;cursor:pointer;';
+      scopeDropdown.innerHTML = `
+        <option value="global">Global</option>
+        <option value="local">Local</option>
+      `;
+      
+      // Set current scope
+      const currentScope = window.variableScopes[v] || 'global';
+      scopeDropdown.value = currentScope;
+      
+      scopeDropdown.onchange = () => {
+        window.variableScopes[v] = scopeDropdown.value;
+        saveVariableScopes();
+        refreshVariableDropdowns();
+      };
+      
+      // Delete button
       const delBtn = document.createElement('button');
-      delBtn.textContent = '🗑'; // trash, get it? lmao
+      delBtn.textContent = '🗑';
       delBtn.style.cssText = 'background:#f44336;color:white;border:none;border-radius:5px;padding:4px 6px;cursor:pointer;';
       delBtn.onclick = () => {
         if (confirm(`Delete variable "${v}"?`)) {
           window.customVariables.splice(i, 1);
+          delete window.variableScopes[v];
           refreshVariableDropdowns();
           renderVarList();
           saveVariables();
-
+          saveVariableScopes();
         }
       };
       
       row.appendChild(nameInput);
+      row.appendChild(scopeDropdown);
       row.appendChild(delBtn);
       varList.appendChild(row);
     });

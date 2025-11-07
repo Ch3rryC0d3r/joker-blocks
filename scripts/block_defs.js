@@ -475,7 +475,6 @@ function VarBlocks() {
             category: 'Variables',
             color: '#f0ad4e',
             output: 'Number',
-            lua: 'G.GAME.[[VAR]]',
             tooltip: 'Returns the value of a variable.',
             fields: [
                 { name: 'VAR', label: '', type: 'dropdown_dynamic', source: 'variables' }
@@ -487,7 +486,6 @@ function VarBlocks() {
             category: 'Variables',
             color: '#f0ad4e',
             tooltip: 'Sets a variable to a specific value.',
-            lua: `G.GAME.[[VAR]] = [[VALUE]]\n`,
             fields: [
                 { name: 'VAR', label: '', type: 'dropdown_dynamic', source: 'variables' }
             ],
@@ -501,7 +499,6 @@ function VarBlocks() {
             category: 'Variables',
             color: '#f0ad4e',
             tooltip: 'Adds a value to a numeric variable.',
-            lua: `G.GAME.[[VAR]] = (G.GAME.current_round.[[VAR]] or 0) + ([[DELTA]])\n`,
             fields: [
                 { name: 'VAR', label: '', type: 'dropdown_dynamic', source: 'variables' }
             ],

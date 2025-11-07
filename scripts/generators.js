@@ -650,6 +650,60 @@ end
     return '';
 };
 
+Blockly.Lua.forBlock['var_get'] = function(block) {
+    const varName = block.getFieldValue('VAR');
+    const scope = window.variableScopes?.[varName] || 'global';
+    
+    if (scope === 'local') {
+        return [varName, Blockly.Lua.ORDER_ATOMIC];
+    } else {
+        return [`G.GAME.${varName}`, Blockly.Lua.ORDER_ATOMIC];
+    }
+};
+
+Blockly.Lua.forBlock['var_set'] = function(block) {
+    const varName = block.getFieldValue('VAR');
+    const valueBlock = block.getInputTargetBlock('VALUE');
+    const scope = window.variableScopes?.[varName] || 'global';
+    
+    let valueCode = '0';
+    if (valueBlock) {
+        const generated = Blockly.Lua.blockToCode(valueBlock);
+        valueCode = Array.isArray(generated) ? generated[0] : generated;
+        valueCode = valueCode.replace(/\n$/, '');
+    }
+    
+    let code;
+    if (scope === 'local') {
+        code = `local ${varName} = ${valueCode}\n`;
+    } else {
+        code = `G.GAME.${varName} = ${valueCode}\n`;
+    }
+    
+    return code;
+};
+
+Blockly.Lua.forBlock['var_change'] = function(block) {
+    const varName = block.getFieldValue('VAR');
+    const deltaBlock = block.getInputTargetBlock('DELTA');
+    const scope = window.variableScopes?.[varName] || 'global';
+    
+    let deltaCode = '0';
+    if (deltaBlock) {
+        const generated = Blockly.Lua.blockToCode(deltaBlock);
+        deltaCode = Array.isArray(generated) ? generated[0] : generated;
+        deltaCode = deltaCode.replace(/\n$/, '');
+    }
+    
+    let code;
+    if (scope === 'local') {
+        code = `local ${varName} = (${varName} or 0) + (${deltaCode})\n`;
+    } else {
+        code = `G.GAME.${varName} = (G.GAME.${varName} or 0) + (${deltaCode})\n`;
+    }
+    
+    return code;
+};
 
 BLOCK_DEFS.forEach(def => {
     if (def.lua) {
@@ -658,3 +712,4 @@ BLOCK_DEFS.forEach(def => {
         };
     }
 });
+
