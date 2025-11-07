@@ -280,6 +280,34 @@ Blockly.Blocks['card_issuit'].init = function() {
   this.setInputsInline(true);
 };
 
+Blockly.Blocks['copy_consumeable'].init = function() {
+  this.setColour('#459340');
+
+  this.appendDummyInput()
+      .appendField('Copy consumeable, Index:')
+
+  this.appendValueInput('idx')
+      .setCheck(null);     
+
+  this.appendDummyInput()
+      .appendField('Edition:');    
+
+  this.appendDummyInput()
+      .appendField(new Blockly.FieldDropdown([
+        ['Don\'t Change','None'],
+        ['Base','base'],
+        ['Negative','negative'],
+        ['Foil','foil'],
+        ['Holographic','holographic'],
+        ['Polychrome','polychrome'],
+      ]), 'edition');
+
+  this.setPreviousStatement(true, null);
+  this.setNextStatement(true, null);
+  this.setInputsInline(true);
+  this.setTooltip('Copies a specified indexed or random consumeable. (If you have atleast 1). Set `Index` to the string \'random\' for random Index, if blank (no input socket) then it\'ll resort to random consumeable');
+};
+
 Blockly.Blocks['card_isrank'].init = function() {
   this.setColour('#725cb8');
   this.setOutput(true, 'Boolean');

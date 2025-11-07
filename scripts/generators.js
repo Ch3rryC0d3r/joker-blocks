@@ -1,6 +1,15 @@
 Blockly.Lua = new Blockly.Generator('Lua');
 Blockly.Lua.hooks = [];
 
+function generateRandomString(length) {
+  const characters = `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
+  let result = '';
+  for (let i = 0; i < length; i++) {
+    const randomIndex = Math.floor(Math.random() * characters.length);
+    result += characters.charAt(randomIndex);
+  }
+  return result;
+}
 
 function indentLua(code, level = 1) {
   const indent = ' '.repeat(level * 4);
@@ -240,17 +249,7 @@ Blockly.Lua.forBlock['check_suit'] = function(block) {
 Blockly.Lua.forBlock['pseudorandom'] = function(block) {
   const a = block.getFieldValue('a') || 'nil';
   const b = block.getFieldValue('b') || 'nil';
-  function generateRandomString(length) {
-    const characters = `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
-    let result = '';
-    for (let i = 0; i < length; i++) {
-      const randomIndex = Math.floor(Math.random() * characters.length);
-      result += characters.charAt(randomIndex);
-    }
-    return result;
-  }
-
-  const seed = generateRandomString(10)
+  const seed = generateRandomString(10);
 
   return [`psuedorandom("${seed}" .. G.GAME.round, ${a}, ${b})`, Blockly.Lua.ORDER_ATOMIC];
 };
@@ -479,6 +478,46 @@ Blockly.Lua.forBlock['change'] = function(block) {
         return `${func}(${value})\n`;
     }
     
+};
+
+Blockly.Lua.forBlock['copy_consumeable'] = function(block) {
+    const idx = block.getInputTargetBlock('idx');
+    let idxCode = null;
+    
+    if (idx) {
+        const generated = Blockly.Lua.blockToCode(idx);
+        idxCode = Array.isArray(generated) ? generated[0] : generated;
+        idxCode = idxCode.replace(/\n$/, '');
+    }
+    
+    let edition = block.getFieldValue('edition') || 'None';
+    const seed = generateRandomString(10);
+    
+    let editionLine = '';
+    if (edition && edition !== 'None') {
+        editionLine = `copied_card:set_edition("e_${edition}", true)\n            `;
+    }
+    
+    let cardToObtainLine = '';
+    if (idxCode && idxCode !== 'random') {
+        cardToObtainLine = `local card_to_copy = G.consumeables.cards[${idxCode}]`;
+    } else {
+        cardToObtainLine = `local card_to_copy = pseudorandom_element(G.consumeables.cards, pseudoseed('copy_${seed}'))`;
+    }
+    
+    const code = `if G.consumeables.cards[1] then
+    G.E_MANAGER:add_event(Event({
+        func = function()
+            ${cardToObtainLine}
+            local copied_card = copy_card(card_to_copy)
+            ${editionLine}copied_card:add_to_deck()
+            G.consumeables:emplace(copied_card)
+            return true
+        end
+    }))
+end\n`;
+    
+    return code;
 };
 
 Blockly.Lua.forBlock['exact_hand_type'] = function(block) {

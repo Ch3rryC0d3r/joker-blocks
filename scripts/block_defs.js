@@ -1,8 +1,3 @@
-/*
-Vanilla Remade (joker) Progress: 19/150
-*/
-
-
 function GameObjectBlocks() {
     return [
         {
@@ -126,8 +121,8 @@ function ConditionBlocks() {
                         ['After scoring','after scoring'],
                         ['A card was sold','card sold'],
                         ['A card is scoring','card score'],   
-                        ['Round ended (won)','context.end_of_round and context.game_over == false and context.main_eval']
-                               
+                        ['Round ended (won)','context.end_of_round and context.game_over == false and context.main_eval'],
+                        ['Shop exited','context.ending_shop'],
                     ]
                 }
             ]
@@ -480,7 +475,7 @@ function VarBlocks() {
             category: 'Variables',
             color: '#f0ad4e',
             output: 'Number',
-            lua: '[[VAR]]',
+            lua: 'G.GAME.[[VAR]]',
             tooltip: 'Returns the value of a variable.',
             fields: [
                 { name: 'VAR', label: '', type: 'dropdown_dynamic', source: 'variables' }
@@ -492,7 +487,7 @@ function VarBlocks() {
             category: 'Variables',
             color: '#f0ad4e',
             tooltip: 'Sets a variable to a specific value.',
-            lua: `G.GAME.current_round.[[VAR]] = [[VALUE]]\n`,
+            lua: `G.GAME.[[VAR]] = [[VALUE]]\n`,
             fields: [
                 { name: 'VAR', label: '', type: 'dropdown_dynamic', source: 'variables' }
             ],
@@ -506,7 +501,7 @@ function VarBlocks() {
             category: 'Variables',
             color: '#f0ad4e',
             tooltip: 'Adds a value to a numeric variable.',
-            lua: `G.GAME.current_round.[[VAR]] = (G.GAME.current_round.[[VAR]] or 0) + ([[DELTA]])\n`,
+            lua: `G.GAME.[[VAR]] = (G.GAME.current_round.[[VAR]] or 0) + ([[DELTA]])\n`,
             fields: [
                 { name: 'VAR', label: '', type: 'dropdown_dynamic', source: 'variables' }
             ],
@@ -620,8 +615,14 @@ function GeneralBlocks() {
             nextStatement: 'BlindFunction',
             statementInput: 'body',
             tooltip: 'Generates a new card with the specified properties. Use Creation blocks inside to define its details.'
-
-        },          
+        },   
+        {
+            type: 'copy_consumeable',
+            title: 'Copy Consumeable',
+            category: 'General',
+            color: '#459340',
+            tooltip: 'Copies a specified indexed or random consumeable (If you have atleast 1.)'
+        },                 
         {
             type: 'atlaskey',
             title: 'Atlas',
