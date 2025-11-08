@@ -125,8 +125,12 @@ function genLuaFromTemplate(template, block) {
   // clean up multiple blank lines
   result = result.replace(/\n{3,}/g, '\n\n');
 
-  // --- merge multiple "return { ..x }" blocks if they exist ---
-  {
+{
+  // Don't merge if we have if/else/for/while structures that contain the returns
+  const hasControlFlow = /^\s*(if|else|for|while|repeat|function)/m.test(result);
+  
+  if (!hasControlFlow) {
+    // Original merge logic only for non-control-flow blocks
     const returnMatches = [...result.matchAll(/return\s*\{([^}]*)\}/g)];
     if (returnMatches.length > 1) {
       const mergedContent = returnMatches
@@ -138,20 +142,16 @@ function genLuaFromTemplate(template, block) {
       result = result.replace(/return\s*\{[^}]*\}\n?/g, '');
       
       // Add merged return at the end, but respect existing indentation
-      // Check if we're inside a function by looking for 'end,'
       if (result.includes('end,')) {
-        // Insert before the closing 'end,'
         result = result.replace(/(\s+)end,/, `$1return { ${mergedContent} }\n$1end,`);
       } else if (result.includes('end\n')) {
-        // Insert before 'end\n'
         result = result.replace(/(\s+)end\n/, `$1return { ${mergedContent} }\n$1end\n`);
       } else {
-        // Fallback: just append at the end
         result += `\nreturn { ${mergedContent} }\n`;
       }
     }
   }
-
+}
   return result;
 }
 
@@ -228,7 +228,8 @@ Blockly.Lua.forBlock['givex'] = function(block) {
     'Chips': 'chips',
     'XChips': 'xchips',
     'XMult': 'xmult',
-    'Dollars': 'dollars'
+    'Dollars': 'dollars',
+    'Message': 'message'
   };
   const key = varMap[varName] || varName;
 
@@ -253,6 +254,9 @@ Blockly.Lua.forBlock['givex'] = function(block) {
 
   if (key === 'dollars' && insideDollarBonus) {
     return `return ${amt}\n${nextCode}`;
+  }
+  if (key === 'message') {
+    return `return { ${key} = '${amt}' }\n`;
   }
 
   // default (normal table return)
@@ -477,6 +481,19 @@ Blockly.Lua.forBlock['joker_conditions'] = function(block) {
         default:
             return ['false', Blockly.Lua.ORDER_ATOMIC];
     }
+};
+
+Blockly.Lua.forBlock['cards_stuff'] = function(block) {
+    const cards = block.getFieldValue('cards');
+    const idx = block.getInputTargetBlock('idx');
+
+    if (idx) {
+      return `${cards}[${idx}]`; 
+    } else {
+      return ``;
+    }
+    
+   
 };
 
 Blockly.Lua.forBlock['card_conditions'] = function(block) {

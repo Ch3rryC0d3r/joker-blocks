@@ -121,7 +121,8 @@ function ConditionBlocks() {
                         ['After scoring','after scoring'],
                         ['A card was sold','card sold'],
                         ['A card is scoring','card score'],   
-                        ['Round ended (won)','context.end_of_round and context.game_over == false and context.main_eval'],
+                        ['Is Game Over','context.game_over == true'],
+                        ['Round End','context.end_of_round'],
                         ['Shop exited','context.ending_shop'],
                         
                     ]
@@ -147,12 +148,22 @@ function ConditionBlocks() {
                         ['Pre-Discard','context.pre_discard'],
                         ['Discard','context.discard'],
                         ['Card Area = Jokers','context.cardarea == G.jokers'],
+                        ['Card Area = Play','context.cardarea == G.play'],
+                        ['Card Area = Hand','context.cardarea == G.hand'],
+                        ['Effecting a Playing Card','context.individual'],
                         
                     ]
                 }
             ],
             tooltip: 'Check for various context checks.'
-        },                     
+        },       
+        {
+            type: 'cards_stuff',
+            title: 'Context',
+            category: 'Conditions',
+            color: '#725cb8',
+            output: 'Object',
+        },                        
         {
             type: 'contain_hand_type',
             title: 'Hand Type',
@@ -177,7 +188,7 @@ function ConditionBlocks() {
         },
         {
             type: 'card_issuit',
-            title: 'Currently scoring card',
+            title: 'is suit',
             category: 'Conditions',
             color: '#725cb8',
             lua: '[[card]]:is_suit([[suit]])',
@@ -186,13 +197,31 @@ function ConditionBlocks() {
         },  
         {
             type: 'card_isrank',
-            title: 'Currently scoring card',
+            title: 'is rank',
             category: 'Conditions',
             color: '#725cb8',
             lua: '[[card]]:get_id() == [[rank]]',
             output: 'Boolean',
             tooltip: 'Whether or not `card` is `rank` (`card` is the left input socket, `rank` is on the right)',
-        },          
+        }, 
+        {
+            type: 'card_hasnorank',
+            title: 'has no rank',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: 'SMODS.has_no_rank([[card]])',
+            output: 'Boolean',
+            tooltip: 'Whether or not a card has NO rank'
+        }, 
+        {
+            type: 'card_isdebuffed',
+            title: 'is debuffed?',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: '[[card]].debuffed',
+            output: 'Boolean',
+            tooltip: 'Whether or not a card is debuffed.'
+        },                                     
         {
             // most properties changed in blocks.js
             type: 'in_blind',
@@ -328,7 +357,7 @@ function LogicBlocks() {
                         ['Unused Discards','G.GAME.unused_discards'],
                         ['Discards Left','G.GAME.current_round.discards_left'],
                         ['Hands Left','G.GAME.current_round.hands_left'],
-                        ['(Amount of) Cards played','#context.full_hand'],
+                        ['(Amount of) Cards in Play','#G.play.cards'],
                         ['Empty Joker Slots','(G.jokers.config.card_limit - #G.jokers.cards)'],
                         ['Maximum Bankruptcy','G.GAME.bankrupt_at'],
                         ['Chance Numerator','context.numerator'],
@@ -345,6 +374,38 @@ function LogicBlocks() {
             output: 'Number',
             lua: '#SMODS.find_card("[[a]]", true)'
         },   
+        {
+            type: 'base_id',
+            title: 'Base ID of',
+            category: 'Logic',
+            color: '#4079aa',
+            lua: '[[card]].base.id',
+            output: 'String',
+            tooltip: 'Returns .base.id of a card',
+            valueInputs: [
+                { name: 'card', label: '', check: null }
+            ],
+        },      
+        {
+            type: 'localize',
+            title: 'localize',
+            category: 'Conditions',
+            color: '#4079aa',
+            lua: 'localize("[[input]]")',
+            output: 'String'
+        },         
+        {
+            type: 'base_nominal',
+            title: 'Base Nominal of',
+            category: 'Logic',
+            color: '#4079aa',
+            lua: '[[card]].base.nominal',
+            output: 'String',
+            tooltip: 'Returns .base.nominal of a card',
+            valueInputs: [
+                { name: 'card', label: '', check: null }
+            ],
+        },              
         {
             type: 'card_amt',
             title: 'Amount',
@@ -541,6 +602,15 @@ function ControlBlocks() {
             tooltip: 'Triggers blocks if condition is met.'
         },
         {
+            type: 'iterator',
+            title: 'iterator',
+            category: 'Control',
+            color: '#d07046',
+            output: 'String',
+            lua: 'i',
+            tooltip: 'Returns the current iterator in a (normal/adv) repeat block'
+        },        
+        {
             type: 'if_else',
             title: 'If',
             category: 'Control',
@@ -621,7 +691,7 @@ function GeneralBlocks() {
             category: 'General',
             color: '#26aa96',
             fields: [
-                { name: 'var', label: '', type: 'dropdown', options: ['Mult','Chips','XChips','XMult','Dollars']  }
+                { name: 'var', label: '', type: 'dropdown', options: ['Mult','Chips','XChips','XMult','Dollars','Message']  }
             ],            
             valueInputs: [
                 { name: 'amt', label: 'Add', check: null }

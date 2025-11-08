@@ -198,7 +198,8 @@ Blockly.Blocks['givex'].init = function() {
         ['Chips','Chips'],
         ['XChips','XChips'],
         ['XMult','XMult'],
-        ['Dollars','Dollars']
+        ['Dollars','Dollars'],
+        ['Message','Message']
       ]), 'var')
       .appendField('=');
       
@@ -246,13 +247,52 @@ Blockly.Blocks['card_issuit'].init = function() {
   this.setOutput(true, 'Boolean');
 
   this.appendValueInput('card')
-      .setCheck('Card');
+      .setCheck(null);
 
   this.appendDummyInput()
       .appendField('is suit')
 
   this.appendValueInput('suit')
-      .setCheck('Suit');     
+      .setCheck(null);     
+
+  this.setInputsInline(true);
+};
+
+Blockly.Blocks['card_hasnorank'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck(null);
+
+  this.appendDummyInput()
+      .appendField('has no rank?')    
+
+  this.setInputsInline(true);
+};
+
+Blockly.Blocks['localize'].init = function() {
+  this.setColour('#4079aa');
+  this.setOutput(true, 'String');
+
+  this.appendDummyInput()
+      .appendField('localize')      
+
+  this.appendValueInput('input')
+      .setCheck(null);
+
+  this.setInputsInline(true);
+};
+
+Blockly.Blocks['card_isdebuffed'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck(null);
+
+  this.appendDummyInput()
+      .appendField('is debuffed?')    
 
   this.setInputsInline(true);
 };
@@ -338,13 +378,13 @@ Blockly.Blocks['card_isrank'].init = function() {
   this.setOutput(true, 'Boolean');
 
   this.appendValueInput('card')
-      .setCheck('Card');
+      .setCheck(null);
 
   this.appendDummyInput()
       .appendField('is rank')
 
   this.appendValueInput('rank')
-      .setCheck('Rank');     
+      .setCheck(null);     
 
   this.setInputsInline(true);
 };
@@ -403,6 +443,28 @@ Blockly.Blocks['card_amt'].init = function() {
       
   this.setInputsInline(true);
   this.setTooltip('Calculates how many jokers of the given `id` is currently held.');
+};
+
+Blockly.Blocks['cards_stuff'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Object');
+
+  this.appendDummyInput()
+      .appendField('Index')
+
+  this.appendValueInput('idx')
+      .setCheck(null)      
+
+  this.appendDummyInput()
+      .appendField('of')
+
+  this.appendDummyInput()
+      .appendField(new Blockly.FieldDropdown([
+        ['Playing Cards [Hand]','G.hand.cards'],
+      ]), 'cards');
+      
+  this.setInputsInline(true);
+  this.setTooltip('Returns an index of an item in a list like Playing Cards [Hand]');
 };
 
 Blockly.Blocks['compare'].init = function() {

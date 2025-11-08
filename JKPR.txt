@@ -21,14 +21,14 @@ Four Fingers        [POSSIBLE]
 Mime                [POSSIBLE]
 Credit Card         [POSSIBLE]
 Banner              [POSSIBLE]
-Ceremonial Dagger   [SKIPPED FOR NOW]
+Ceremonial Dagger   [MAY BE POSSIBLE]
 Mystic Summit       [POSSIBLE]
 Marble Joker        [POSSIBLE]
-Loyalty Card        [WIP]
-8 Ball                
-Misprint                
-Dusk                
-Raised Fist                
+Loyalty Card        [MAY BE POSSIBLE]
+8 Ball              [POSSIBLE]
+Misprint            [POSSIBLE]
+Dusk                [POSSIBLE]
+Raised Fist         [POSSIBLE]
 Chaos the Clown                
 Fibonacci                
 Steel Joker                
