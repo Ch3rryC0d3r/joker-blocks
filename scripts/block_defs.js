@@ -390,7 +390,7 @@ function LogicBlocks() {
         {
             type: 'localize',
             title: 'localize',
-            category: 'Conditions',
+            category: 'General',
             color: '#4079aa',
             lua: 'localize("[[input]]")',
             output: 'String'

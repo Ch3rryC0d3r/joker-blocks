@@ -899,50 +899,133 @@ window.addEventListener("load", () => {
     resizeWorkspace();
     if (liveLuaEnabled) updateLiveLua();
   });
+  
+  let isDraggingDivider = false;
+
+  const divider = document.createElement('div');
+  divider.id = 'luaDivider';
+  divider.style.cssText = `
+    position: absolute;
+    top: 0;
+    right: 400px;
+    width: 4px;
+    height: 100%;
+    background: #444;
+    cursor: col-resize;
+    user-select: none;
+    z-index: 15;
+    transition: background 0.2s;
+  `;
+
+  divider.addEventListener('mouseenter', () => {
+    if (liveLuaEnabled) divider.style.background = '#0084ff';
+  });
+
+  divider.addEventListener('mouseleave', () => {
+    if (!isDraggingDivider) divider.style.background = '#444';
+  });
+
+  divider.addEventListener('mousedown', (e) => {
+    isDraggingDivider = true;
+    divider.style.background = '#0084ff';
+    e.preventDefault();
+  });
+
+  document.addEventListener('mousemove', (e) => {
+    if (!isDraggingDivider || !liveLuaEnabled) return;
+
+    const container = document.body;
+    const newRightWidth = Math.max(200, container.clientWidth - e.clientX - 8);
+    
+    liveLuaArea.style.width = newRightWidth + 'px';
+    divider.style.right = newRightWidth + 'px';
+    
+    document.getElementById("blocklyDiv").style.width = `calc(100% - ${newRightWidth}px)`;
+    Blockly.svgResize(workspace);
+    updateOptionsBtnPosition();
+  });
+
+  document.addEventListener('mouseup', () => {
+    if (isDraggingDivider) {
+      isDraggingDivider = false;
+      divider.style.background = '#444';
+    }
+  });
+
+  document.body.appendChild(divider);
+
+  // Set initial divider visibility
+  divider.style.display = liveLuaEnabled ? 'block' : 'none';
+
+  // Save and load width preference
+  const LUA_WIDTH_KEY = "jokerblocks_lua_width";
+  const savedWidth = localStorage.getItem(LUA_WIDTH_KEY);
+  if (savedWidth) {
+    liveLuaArea.style.width = savedWidth + 'px';
+    divider.style.right = savedWidth + 'px';
+  } else {
+    liveLuaArea.style.width = '400px';
+    divider.style.right = '400px';
+  }
+
+  // Update resize observer to save width
+  const luaResizeObserver = new ResizeObserver(() => {
+    const width = liveLuaArea.offsetWidth;
+    if (width > 0) {
+      localStorage.setItem(LUA_WIDTH_KEY, width);
+    }
+  });
+
+  luaResizeObserver.observe(liveLuaArea);
+
+  liveLuaToggle.addEventListener("change", () => {
+    divider.style.display = liveLuaToggle.checked ? 'block' : 'none';
+  });
 
   let highlightBlock = null;
   workspace.addChangeListener(() => { if (liveLuaEnabled) updateLiveLua(); });
   workspace.addChangeListener(e => { if (e.type === Blockly.Events.SELECTED) highlightBlock = e.newElementId; updateLiveLua(); });
 
-    function updateLiveLua() {
-      Blockly.Lua.hooks = [];
-      let code = Blockly.Lua.workspaceToCode(workspace);
-      if (Blockly.Lua.hooks.length > 0) code += '\n' + Blockly.Lua.hooks.join('\n');
+  function updateLiveLua() {
+    Blockly.Lua.hooks = [];
+    let code = Blockly.Lua.workspaceToCode(workspace);
+    if (Blockly.Lua.hooks.length > 0) code += '\n' + Blockly.Lua.hooks.join('\n');
 
-      const codeElement = document.querySelector('#liveLuaArea code');
-      if (!codeElement) return;
+    const codeElement = document.querySelector('#liveLuaArea code');
+    if (!codeElement) return;
 
-      codeElement.innerHTML = hljs.highlight(
-        code,
-        { language: 'lua' }
-      ).value
+    codeElement.innerHTML = hljs.highlight(
+      code,
+      { language: 'lua' }
+    ).value
 
-      // Highlight selected block if any
-      const selected = highlightBlock ? workspace.getBlockById(highlightBlock) : null;
-      if (selected) {
-        const blockCode = Blockly.Lua.blockToCode(selected);
-        let snippet = Array.isArray(blockCode) ? blockCode[0] : blockCode;
-        const snippetLines = snippet.split("\n").map(l => l.trim()).filter(l => l);
-        
-        // Add background to selected lines
-        let lines = codeElement.innerHTML.split("\n");
-        let start = lines.findIndex(l => l.includes(snippetLines[0]));
-        
-        if (start >= 0) {
-          snippetLines.forEach((line, i) => { 
-            if (lines[start+i]) {
-              lines[start+i] = `<span class="hljs-selected">${lines[start+i]}</span>`;
-            }
-          });
-          codeElement.innerHTML = lines.join("\n");
-        }
+    // Highlight selected block if any
+    const selected = highlightBlock ? workspace.getBlockById(highlightBlock) : null;
+    if (selected) {
+      const blockCode = Blockly.Lua.blockToCode(selected);
+      let snippet = Array.isArray(blockCode) ? blockCode[0] : blockCode;
+      const snippetLines = snippet.split("\n").map(l => l.trim()).filter(l => l);
+      
+      let lines = codeElement.innerHTML.split("\n");
+      let start = lines.findIndex(l => l.includes(snippetLines[0]));
+      
+      if (start >= 0) {
+        snippetLines.forEach((line, i) => { 
+          if (lines[start+i]) {
+            lines[start+i] = `<span class="hljs-selected">${lines[start+i]}</span>`;
+          }
+        });
+        codeElement.innerHTML = lines.join("\n");
       }
+    }
   }
 
   // --- Smart options button positioning ---
   function updateOptionsBtnPosition() {
-    optionsBtn.style.right = liveLuaEnabled ? (liveLuaArea.offsetWidth + 10) + "px" : "5px";
+    const luaWidth = liveLuaEnabled ? liveLuaArea.offsetWidth : 0;
+    optionsBtn.style.right = (luaWidth + 10) + "px";
   }
+  
   liveLuaToggle.addEventListener("change", updateOptionsBtnPosition);
   window.addEventListener("resize", updateOptionsBtnPosition);
   updateOptionsBtnPosition();

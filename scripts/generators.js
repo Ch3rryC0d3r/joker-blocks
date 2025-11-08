@@ -798,7 +798,7 @@ Blockly.Lua.forBlock['var_set'] = function(block) {
     const valueBlock = block.getInputTargetBlock('VALUE');
     const scope = window.variableScopes?.[varName] || 'global';
     
-    let valueCode = '0';
+    let valueCode = 'nil';
     if (valueBlock) {
         const generated = Blockly.Lua.blockToCode(valueBlock);
         valueCode = Array.isArray(generated) ? generated[0] : generated;
