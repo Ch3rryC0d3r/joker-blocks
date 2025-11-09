@@ -147,15 +147,15 @@ function refreshVariableDropdowns() {
 // === Main setup ===
 window.addEventListener("load", () => {
   const DEFAULT_VAR_SCOPE_KEY = "jokerblocks_default_var_scope";
-  let defaultVarScope = localStorage.getItem(DEFAULT_VAR_SCOPE_KEY) || "global";
+  window.defaultVarScope = localStorage.getItem(DEFAULT_VAR_SCOPE_KEY) || "global";
 
   const defaultVarScopeSelect = document.getElementById("defaultVarScopeSelect");
-  defaultVarScopeSelect.value = defaultVarScope;
+  defaultVarScopeSelect.value = window.defaultVarScope;
 
   defaultVarScopeSelect.addEventListener("change", () => {
-    defaultVarScope = defaultVarScopeSelect.value;
-    localStorage.setItem(DEFAULT_VAR_SCOPE_KEY, defaultVarScope);
-  });  
+    window.defaultVarScope = defaultVarScopeSelect.value;
+    localStorage.setItem(DEFAULT_VAR_SCOPE_KEY, window.defaultVarScope);
+  });
   const updateBlocklyTheme = () => {
     if (!window.workspace) return;
     
@@ -182,6 +182,32 @@ window.addEventListener("load", () => {
     }
   };
 
+  const clearAllDataBtn = document.getElementById("clearAllDataBtn");
+
+  clearAllDataBtn.onclick = () => {
+    // First confirmation
+    if (!confirm("Are you sure you want to clear ALL saved data?\n\nThis includes: projects, variables, settings, and workspace.")) {
+      return;
+    }
+    
+    // Second confirmation
+    if (!confirm("This action CANNOT be undone. Clear everything?")) {
+      return;
+    }
+    
+    // Clear all localStorage
+    localStorage.clear();
+    
+    // Optionally, also clear session storage
+    sessionStorage.clear();
+    
+    // Show success message
+    alert("All data cleared! The page will reload.");
+    
+    // Reload the page to reset everything
+    location.reload();
+  };
+  
   // --- Blockly workspace ---
   const toolbox = document.getElementById("toolbox");
   const workspace = Blockly.inject("blocklyDiv", {

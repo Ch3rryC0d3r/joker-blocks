@@ -256,7 +256,11 @@ Blockly.Lua.forBlock['givex'] = function(block) {
     return `return ${amt}\n${nextCode}`;
   }
   if (key === 'message') {
-    return `return { ${key} = '${amt}' }\n`;
+    // For message, check if amt looks like a function call (contains parentheses)
+    // If it does, don't wrap in quotes. Otherwise, wrap in quotes.
+    const isFunctionCall = /\(.*\)/.test(amt);
+    const wrappedAmt = isFunctionCall ? amt : `'${amt}'`;
+    return `return { ${key} = ${wrappedAmt} }\n`;
   }
 
   // default (normal table return)
