@@ -499,10 +499,12 @@ Blockly.Lua.forBlock['joker_conditions'] = function(block) {
     switch (condition) {
         case "joker's turn":
             return ['context.joker_main', Blockly.Lua.ORDER_ATOMIC];
+        case "before joker's turn":
+            return ['context.pre_joker', Blockly.Lua.ORDER_ATOMIC];
+        case "after joker's turn":
+            return ['context.post_joker', Blockly.Lua.ORDER_ATOMIC];
         case "card trigger":
             return ['context.repetition and context.cardarea == G.hand and (next(context.card_effects[1]) or #context.card_effects > 1)', Blockly.Lua.ORDER_ATOMIC];
-        case "after scoring":
-            return ['context.after and context.cardarea == G.play', Blockly.Lua.ORDER_ATOMIC];           
         default:
             return ['false', Blockly.Lua.ORDER_ATOMIC];
     }
@@ -526,8 +528,9 @@ Blockly.Lua.forBlock['card_conditions'] = function(block) {
 
     switch (condition) {
         case "selling self":
-          return ['context.selling_self', Blockly.Lua.ORDER_ATOMIC];      
-           
+          return ['context.selling_self', Blockly.Lua.ORDER_ATOMIC];
+        case "buying a card":
+          return ['context.buying_card', Blockly.Lua.ORDER_ATOMIC];
         default:
           return ['false', Blockly.Lua.ORDER_ATOMIC];
     }
@@ -542,11 +545,25 @@ Blockly.Lua.forBlock['game_conditions'] = function(block) {
         case "card trigger":
             return ['context.repetition and context.cardarea == G.hand and (next(context.card_effects[1]) or #context.card_effects > 1)', Blockly.Lua.ORDER_ATOMIC];
         case 'card sold':
-            return ['context.selling_card', Blockly.Lua.ORDER_ATOMIC];   
+            return ['context.selling_card', Blockly.Lua.ORDER_ATOMIC];
         case 'card score':
-            return ['context.individual and context.cardarea == G.play', Blockly.Lua.ORDER_ATOMIC]; 
+            return ['context.individual and context.cardarea == G.play', Blockly.Lua.ORDER_ATOMIC];
         case 'ready repeat':
-            return ['context.repetition and context.cardarea == G.play', Blockly.Lua.ORDER_ATOMIC];                                    
+            return ['context.repetition and context.cardarea == G.play', Blockly.Lua.ORDER_ATOMIC];
+        case "shop exited":
+            return ['context.ending_shop', Blockly.Lua.ORDER_ATOMIC];
+        case "shop rerolled":
+            return ['context.reroll_shop', Blockly.Lua.ORDER_ATOMIC];
+        case "before total score":
+            return ['context.final_scoring_step', Blockly.Lua.ORDER_ATOMIC];
+        case "before scoring":
+            return ['context.before', Blockly.Lua.ORDER_ATOMIC];
+        case "after scoring":
+            return ['context.after and context.cardarea == G.play', Blockly.Lua.ORDER_ATOMIC];
+        case "first hand drawn":
+            return ['context.first_hand_drawn', Blockly.Lua.ORDER_ATOMIC];
+        case "skipping blind":
+            return ['context.skip_blind', Blockly.Lua.ORDER_ATOMIC];
         default:
             return [condition, Blockly.Lua.ORDER_ATOMIC];
     }

@@ -80,7 +80,8 @@ function ConditionBlocks() {
                     type: 'dropdown', 
                     options: [
                         ['Joker\'s turn', 'joker\'s turn'],
-
+                        ['Before Joker\'s turn', 'before joker\'s turn'],
+                        ['After Joker\'s turn', 'after joker\'s turn'],
                     ]
                 }
             ]
@@ -99,6 +100,7 @@ function ConditionBlocks() {
                     type: 'dropdown', 
                     options: [
                         ['Selling self', 'selling self'],
+                        ['Buying a card','buying a card'],
                     ]
                 }
             ]
@@ -123,8 +125,13 @@ function ConditionBlocks() {
                         ['A card is scoring','card score'],   
                         ['Is Game Over','context.game_over == true'],
                         ['Round End','context.end_of_round'],
-                        ['Shop exited','context.ending_shop'],
-                        
+                        ['Shop exited','shop exited'],
+                        ['Shop rerolled','shop rerolled'],
+                        ['Before total score', 'before total score'],
+                        ['Before scoring', 'before scoring'],
+                        ['After scoring', 'after scoring'],
+                        ['First hand drawn','first hand drawn'],
+                        ['Skipping blind','skipping blind'],
                     ]
                 }
             ]
@@ -150,8 +157,9 @@ function ConditionBlocks() {
                         ['Card Area = Jokers','context.cardarea == G.jokers'],
                         ['Card Area = Play','context.cardarea == G.play'],
                         ['Card Area = Hand','context.cardarea == G.hand'],
-                        ['Effecting a Playing Card','context.individual'],
-                        
+                        ['Affecting a Playing Card','context.individual'],
+                        ['Skipping Booster Pack','context.skipping_booster'],
+                        ['Using Consumable','context.using_consumeable'],
                     ]
                 }
             ],
