@@ -828,6 +828,17 @@ function GeneralBlocks() {
             ]
         },   
         {
+            type: 'free_rerolls',
+            title: 'Give',
+            category: 'General',
+            color: '#5a5094',
+            tooltip: 'Adds X free rerolls to the next shop',
+            lua: 'SMODS.change_free_rerolls([[val]])',
+            valueInputs: [
+                { name: 'val', label: 'by', check: null }
+            ]
+        },           
+        {
             type: 'game_value_set',
             title: 'Set Game Value',
             category: 'General',
@@ -1007,7 +1018,6 @@ function CreationBlocks() {
     ];
 }
 
-
 function JokerFunctionBlocks() {
   return [
         {
@@ -1115,7 +1125,6 @@ end)()`,
         },                                                 
   ];
 }
-
 
 function SoundFunctionBlocks() {
   return [

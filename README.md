@@ -9,6 +9,6 @@ With this simple block-coding approach we can recreate complex mechanics, like C
 
 <img width="691" height="142" alt="image" src="https://github.com/user-attachments/assets/c43aeb3c-94d5-4868-a549-0ce769e13a7a" />
 
-We can also recreate `Perkeo`'s `Create Negative Copy of a random consumeable` system very easily, with only 4 blocks (lol another `4 blocks`)
+We can also recreate `Perkeo`'s `Create Negative Copy of a random consumeable` system very easily, with only 4 blocks
 
 <img width="759" height="218" alt="image" src="https://github.com/user-attachments/assets/f7f6b481-5d7b-473f-b78d-79b7ce225d19" />

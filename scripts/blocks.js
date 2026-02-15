@@ -187,8 +187,6 @@ Object.keys(Blockly.Blocks).forEach(blockType => {
     }
 });
 
-
-
 Blockly.Blocks['givex'].init = function() {
   this.setColour('#26aa96');
   this.appendDummyInput()
@@ -301,6 +299,23 @@ Blockly.Blocks['localize'].init = function() {
   this.setInputsInline(true);
 };
 
+Blockly.Blocks['free_rerolls'].init = function() {
+  this.setColour('#5a5094');
+
+  this.appendDummyInput()
+      .appendField('Add')      
+
+  this.appendValueInput('val')
+      .setCheck(null);
+
+  this.appendDummyInput()
+      .appendField('Free Rerolls')        
+
+  this.setPreviousStatement(true, null);
+  this.setNextStatement(true, null);
+  this.setInputsInline(true);
+};
+
 Blockly.Blocks['card_isdebuffed'].init = function() {
   this.setColour('#725cb8');
   this.setOutput(true, 'Boolean');
@@ -388,7 +403,6 @@ Blockly.Blocks['in_blind'].init = function() {
   this.setInputsInline(true);
   this.setTooltip('Checks if you\'re in any or specifically a boss blind.');
 };
-
 
 Blockly.Blocks['card_isrank'].init = function() {
   this.setColour('#725cb8');

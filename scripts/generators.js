@@ -664,7 +664,6 @@ Blockly.Lua.forBlock['card_amt'] = function(block) {
   return `#G.${type}.cards`;
 };
 
-
 Blockly.Lua.forBlock['exact_hand_type'] = function(block) {
     const condition = block.getFieldValue('condition');
     
@@ -744,7 +743,6 @@ Blockly.Lua.forBlock['calc'] = function(block) {
     return `    calculate = function(self, card, context)\n${body}\n    end,\n`;
   }
 };
-
 
 Blockly.Lua.forBlock['boss_type'] = function(block) {
     const type = block.getFieldValue('type');
@@ -871,8 +869,6 @@ Blockly.Lua.forBlock['var_change'] = function(block) {
     
     return code;
 };
-
-
 
 BLOCK_DEFS.forEach(def => {
     if (def.lua) {

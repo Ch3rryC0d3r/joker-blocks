@@ -66,14 +66,20 @@ function saveVariables() {
 function saveVariableScopes() {
   localStorage.setItem("variableScopes", JSON.stringify(window.variableScopes || {}));
 }
-
 function loadVariableScopes() {
   window.variableScopes = JSON.parse(localStorage.getItem("variableScopes") || "{}");
 }
 
 // popup for creating new variables
 function createNewVariablePopup(onDone) {
+  const existingOverlay = document.getElementById("variable-popup-overlay");
+  if (existingOverlay) {
+    existingOverlay.querySelector('#varNameInput')?.focus();
+    return;
+  }
+
   const overlay = document.createElement("div");
+  overlay.id = "variable-popup-overlay";
   overlay.style.cssText = `
     position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
     background: rgba(0,0,0,0.5); display: flex; justify-content: center; align-items: center; z-index: 9999;
@@ -146,6 +152,12 @@ function refreshVariableDropdowns() {
 
 // === Main setup ===
 window.addEventListener("load", () => {
+  // clean up popups
+  const existingOverlay = document.getElementById("variable-popup-overlay");
+  if (existingOverlay) {
+    existingOverlay.remove();
+  }
+  
   const DEFAULT_VAR_SCOPE_KEY = "jokerblocks_default_var_scope";
   window.defaultVarScope = localStorage.getItem(DEFAULT_VAR_SCOPE_KEY) || "global";
 
@@ -207,7 +219,7 @@ window.addEventListener("load", () => {
     // Reload the page to reset everything
     location.reload();
   };
-  
+
   // --- Blockly workspace ---
   const toolbox = document.getElementById("toolbox");
   const workspace = Blockly.inject("blocklyDiv", {
