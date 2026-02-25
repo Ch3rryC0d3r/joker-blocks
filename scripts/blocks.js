@@ -115,9 +115,9 @@ Object.keys(Blockly.Blocks).forEach(blockType => {
             const def = blockDefMap[blockType];
             
             // Check hardcoded list first
-            if (["or", "not", "compare","limit","minus","add","multiply","divide","givex","var_get","var_set","var_change","adv_repeat","repeat"].includes(blockType)) {
+            if (["or", "not", "compare", "limit", "minus", "add", "multiply", "divide", "givex", "var_get", "var_set", "var_change", "adv_repeat", "repeat", "special_operation", "string_letter_x", "concat", "change"].includes(blockType)) {
                 this.setInputsInline(true);
-            } 
+            }
             // Then check the definition's inlineInputs property
             else if (def && def.inlineInputs === true) {
                 this.setInputsInline(true);
@@ -270,7 +270,7 @@ Blockly.Blocks['card_hasnorank'].init = function() {
 };
 
 Blockly.Blocks['modulo'].init = function() {
-  this.setColour('#4079aa');
+  this.setColour('#5cb85c');
   this.setOutput(true, 'Number');
 
   this.appendValueInput('A')
@@ -284,6 +284,35 @@ Blockly.Blocks['modulo'].init = function() {
 
   this.setTooltip('Returns the remainder or signed remainder of a division.');
   this.setInputsInline(true);
+};
+
+Blockly.Blocks['special_operation'].init = function() {
+  this.setColour('#5cb85c');
+
+  this.appendDummyInput()
+      .appendField(new Blockly.FieldDropdown([
+        ['floor', 'math.floor'],
+        ['ceiling', 'math.ceil'],
+        ['abs', 'math.abs'],
+        ['sqrt', 'math.sqrt'],
+        ['sin', 'math.sin'],
+        ['cos', 'math.cos'],
+        ['atan', 'math.atan'],
+        ['acos', 'math.acos'],
+        ['asin', 'math.asin'],
+        ['ln', 'math.log'],
+        ['log', 'math.log10'],
+        ['e ^', 'math.exp'],
+        ['10 ^', '10^']
+      ]), 'op')
+      .appendField('of'); // The text connecting the dropdown and input
+      
+  this.appendValueInput('val')
+      .setCheck(null);
+      
+  this.setOutput(true, 'Number');
+  this.setInputsInline(true);
+  this.setTooltip('Performs a mathematical operation (Floor, Ceiling, etc.) on a value.');
 };
 
 Blockly.Blocks['localize'].init = function() {
@@ -492,10 +521,12 @@ Blockly.Blocks['cards_stuff'].init = function() {
   this.appendDummyInput()
       .appendField(new Blockly.FieldDropdown([
         ['Playing Cards [Hand]','G.hand.cards'],
+        ['Jokers','G.joker.cards'], 
+        ['Consumeables','G.consumeables.cards'], 
       ]), 'cards');
       
   this.setInputsInline(true);
-  this.setTooltip('Returns an index of an item in a list like Playing Cards [Hand]');
+  this.setTooltip('Returns an index of an item in the specified list');
 };
 
 Blockly.Blocks['compare'].init = function() {

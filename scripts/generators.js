@@ -189,6 +189,49 @@ Blockly.Lua.forBlock['and'] = function(block) {
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
+Blockly.Lua.forBlock['string_contains'] = function(block) {
+    const leftBlock = block.getInputTargetBlock('left');
+    const rightBlock = block.getInputTargetBlock('right');
+    
+    let leftCode = '';
+    let rightCode = '';
+    
+    if (leftBlock) {
+        const generated = Blockly.Lua.blockToCode(leftBlock);
+        leftCode = Array.isArray(generated) ? generated[0] : generated;
+    }
+    
+    if (rightBlock) {
+        const generated = Blockly.Lua.blockToCode(rightBlock);
+        rightCode = Array.isArray(generated) ? generated[0] : generated;
+    }
+    
+    const code = `string.find(${leftCode}, ${rightCode})`;
+    return [code, Blockly.Lua.ORDER_ATOMIC];
+};
+
+Blockly.Lua.forBlock['special_operation'] = function(block) {
+    // Get the selected operation (e.g., "math.floor")
+    const operation = block.getFieldValue('op');
+    
+    // Get the code from the input "val"
+    const valBlock = block.getInputTargetBlock('val');
+    let valCode = '0'; // Default to 0 if nothing is connected
+    
+    if (valBlock) {
+        const generated = Blockly.Lua.blockToCode(valBlock);
+        // Extract code from [code, order] array and strip newlines
+        valCode = Array.isArray(generated) ? generated[0] : generated;
+        valCode = valCode.replace(/\n$/, '');
+    }
+
+    // Combine into math.floor(value)
+    const code = `${operation}(${valCode})`;
+    
+    // Return code with ATOMIC order to prevent unnecessary parentheses
+    return [code, Blockly.Lua.ORDER_ATOMIC];
+};
+
 Blockly.Lua.forBlock['or'] = function(block) {
     const leftBlock = block.getInputTargetBlock('left');
     const rightBlock = block.getInputTargetBlock('right');

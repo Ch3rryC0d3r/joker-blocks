@@ -213,8 +213,7 @@ window.addEventListener("load", () => {
     // Optionally, also clear session storage
     sessionStorage.clear();
     
-    // Show success message
-    alert("All data cleared! The page will reload.");
+    //alert("All data cleared! The page will reload.");
     
     // Reload the page to reset everything
     location.reload();

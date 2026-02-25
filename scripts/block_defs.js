@@ -265,6 +265,19 @@ function LogicBlocks() {
             tooltip: 'Negates a condition'
         },
         {
+            type: 'string_contains',
+            title: '',
+            inlineInputs: true,
+            category: 'Logic',
+            color: '#5cb85c',
+            output: 'Boolean',
+            valueInputs: [
+                { name: 'left', label: '', check: 'String' },
+                { name: 'right', label: 'contains', check: 'String' }
+            ],
+            tooltip: 'returns true if `left` contains `right`'
+        },       
+        {
             type: 'and',
             title: '',
             inlineInputs: true,
@@ -284,7 +297,65 @@ function LogicBlocks() {
             color: '#5cb85c',
             output: 'Number',
             tooltip: 'Compares two values (A == B).'
+        },   
+        {
+            type: 'string_length',
+            title: 'length of',
+            category: 'Logic',
+            color: '#5cb85c',
+            lua: '#([[x]])',
+            output: 'String',
+            tooltip: 'Returns length of input',
+            valueInputs: [
+                { name: 'x', label: '', check: null }
+            ],
+        },
+        {
+            type: 'string_letter_x',
+            title: 'letter',
+            category: 'Logic',
+            color: '#5cb85c',
+            lua: '[[string]]:sub([[x]], [[x]])',
+            output: 'String',
+            tooltip: 'Returns letter X of input',
+            valueInputs: [
+                { name: 'string', label: '', check: null },
+                { name: 'x', label: 'of', check: null }
+            ],
+        },
+        {
+            type: 'concat',
+            title: 'join',
+            category: 'Logic',
+            color: '#5cb85c',
+            lua: '[[x]] .. "" .. [[y]]',
+            output: 'String',
+            tooltip: 'Concatenates ("joins") two values.',
+            valueInputs: [
+                { name: 'x', label: '', check: null },
+                { name: 'y', label: '', check: null }
+            ],
+        }, 
+        {
+            type: 'tostring',
+            title: 'tostring',
+            category: 'Logic',
+            color: '#5cb85c',
+            lua: 'tostring([[x]])',
+            output: 'String',
+            tooltip: 'Converts the input to a string',
+            valueInputs: [
+                { name: 'x', label: '', check: null }
+            ],
         },         
+        {
+            type: 'special_operation',
+            title: 'Special Operation',
+            category: 'Logic',
+            color: '#5cb85c',
+            output: 'Number',
+            tooltip: 'Performs a mathematical operation (Floor, Ceiling, etc.) on a value.'
+        },
         {
             type: 'minus',
             title: '',
@@ -321,6 +392,13 @@ function LogicBlocks() {
             ],
             tooltip: 'Returns `A * B` (A being left value, B being right value)'
         }, 
+        {
+            type: 'modulo',
+            title: 'modulo',
+            category: 'Logic',
+            color: '#4079aa',
+            output: 'Number',
+        },        
         {
             type: 'divide',
             title: '',
@@ -359,7 +437,7 @@ function LogicBlocks() {
                     type: 'dropdown', 
                     options: [
                         ['Round', 'G.GAME.round'],
-                        ['Money', 'G.GAME.dollars'],
+                        ['Dollars', 'G.GAME.dollars'],
                         ['Current Chips','hand_chips'],
                         ['Current Mult','mult'],
                         ['Unused Discards','G.GAME.unused_discards'],
@@ -423,13 +501,6 @@ function LogicBlocks() {
             output: 'Number',
         },        
         {
-            type: 'modulo',
-            title: 'modulo',
-            category: 'Logic',
-            color: '#4079aa',
-            output: 'Number',
-        },                  
-        {
             // most properties are in blocks.js
             type: 'pseudorandom',
             category: 'Logic',
@@ -455,7 +526,7 @@ function LogicBlocks() {
         end
     end
 end)()`,
-            tooltip: 'Returns a valid random suit (Valid means in your deck)'
+            tooltip: 'Returns a valid random suit ("valid" meaning "in your deck")'
         },      
         {
             type: 'rand_rank',
@@ -477,7 +548,7 @@ end)()`,
         end
     end
 end)()`,
-            tooltip: 'Returns a valid random rank (Valid means in your deck)',
+            tooltip: 'Returns a valid random rank ("valid" meaning "in your deck")',
         },                  
         {
             type: 'sc_card',
