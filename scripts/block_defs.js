@@ -240,8 +240,17 @@ function ConditionBlocks() {
             tooltip: 'Whether or not a playing card is a face card'
         },
         {
+            type: 'card_hasedition',
+            title: '',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: '[[card]].edition and [[card]].edition.key == "e_[[key]]"',
+            output: 'Boolean',
+            tooltip: 'Whether or not a playing card is a face card'
+        },
+        {
             type: 'card_hasenhancement',
-            title: 'has enhancement?',
+            title: '',
             category: 'Conditions',
             color: '#725cb8',
             lua: 'SMODS.has_enhancement([[card]], "m_[[key]]")',

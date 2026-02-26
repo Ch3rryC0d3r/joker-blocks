@@ -378,6 +378,31 @@ Blockly.Blocks['card_isface'].init = function() {
 };
 
 
+Blockly.Blocks['card_hasedition'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck('Object');
+
+  this.appendDummyInput()
+      .appendField('has edition')
+
+  this.appendDummyInput()
+      .appendField(new Blockly.FieldDropdown([
+        ['Base','base'],
+        ['Negative','negative'],
+        ['Foil','foil'],
+        ['Holographic','holographic'],
+        ['Polychrome','polychrome'],
+      ]), 'key'); 
+
+  this.appendDummyInput()
+      .appendField('?')
+
+  this.setInputsInline(true);
+};
+
 Blockly.Blocks['card_hasenhancement'].init = function() {
   this.setColour('#725cb8');
   this.setOutput(true, 'Boolean');
@@ -390,11 +415,14 @@ Blockly.Blocks['card_hasenhancement'].init = function() {
 
   this.appendDummyInput()
       .appendField(new Blockly.FieldDropdown([
-        ['Base','base'],
-        ['Negative','negative'],
-        ['Foil','foil'],
-        ['Holographic','holographic'],
-        ['Polychrome','polychrome'],
+        ['Lucky','lucky'],
+        ['Wild','wild'],
+        ['Glass','glass'],
+        ['Stone','stone'],
+        ['Gold','gold'],
+        ['Steel','steel'],
+        ['Mult','mult'],
+        ['Bonus','Bonus'],
       ]), 'key'); 
 
   this.appendDummyInput()
