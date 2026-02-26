@@ -168,8 +168,8 @@ function ConditionBlocks() {
         {
             type: 'cards_stuff',
             title: 'Context',
-            category: 'Conditions',
-            color: '#725cb8',
+            category: 'Values',
+            color: '#4079aa',
             output: 'Object',
         },                        
         {
@@ -228,8 +228,26 @@ function ConditionBlocks() {
             color: '#725cb8',
             lua: '[[card]].debuffed',
             output: 'Boolean',
-            tooltip: 'Whether or not a card is debuffed.'
-        },                                     
+            tooltip: 'Whether or not a playing card is debuffed'
+        },       
+        {
+            type: 'card_isface',
+            title: 'is face?',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: '[[card]]:is_face()',
+            output: 'Boolean',
+            tooltip: 'Whether or not a playing card is a face card'
+        },
+        {
+            type: 'card_hasenhancement',
+            title: 'has enhancement?',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: 'SMODS.has_enhancement([[card]], "m_[[key]]")',
+            output: 'Boolean',
+            tooltip: 'Whether or not a playing card is a face card'
+        },
         {
             // most properties changed in blocks.js
             type: 'in_blind',
@@ -639,8 +657,23 @@ end)()`,
             lua: 'math.max([[lim]], [[val]])',
             tooltip: 'Limits a value to a maximum by returning the higher of the two (math.max).'
         },      
-                
-         
+        {
+            type: 'card_property',
+            title: '',
+            fieldsFirst: true,
+            inlineInputs: true,
+            category: 'Values',
+            color: '#4079aa',
+            output: 'Number',
+            valueInputs: [
+                { name: 'v', label: 'value of', check: 'Object' }
+            ],
+            fields: [
+              { name: 't', label: 'Get', type: 'dropdown', options: [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set']] },
+            ],
+            lua: '[[v]].[[t]]',
+            tooltip: 'Gets a property of a card (i.e. Sell value of a joker)'
+        },
     ]
 }
 

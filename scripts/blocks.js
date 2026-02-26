@@ -20,21 +20,22 @@ BLOCK_DEFS.forEach(def => {
 
   let argCount = 0;
 
-  // Handle value inputs FIRST
-  def.valueInputs?.forEach((inp) => {
+  const processValueInputs = () => def.valueInputs?.forEach((inp) => {
       argCount++;
       if (inp.label) {
           json.message0 += ` ${inp.label} %${argCount}`;
       } else {
           json.message0 += ` %${argCount}`;
       }
-      
       json.args0.push({
           type: 'input_value',
           name: inp.name,
           check: inp.check || null
       });
   });
+
+  // Handle value inputs FIRST (unless fieldsFirst is set)
+  if (!def.fieldsFirst) processValueInputs();
 
   // Handle fields AFTER (so they appear on the right)
   def.fields?.forEach((f) => {
@@ -74,6 +75,9 @@ BLOCK_DEFS.forEach(def => {
       });
     }
   });
+
+  // If fieldsFirst, now append value inputs after fields
+  if (def.fieldsFirst) processValueInputs();
 
   if (def.statementInput) {
     json.message1 = '%1';
@@ -247,13 +251,13 @@ Blockly.Blocks['card_issuit'].init = function() {
   this.setOutput(true, 'Boolean');
 
   this.appendValueInput('card')
-      .setCheck(null);
+      .setCheck('Object');
 
   this.appendDummyInput()
       .appendField('is suit')
 
   this.appendValueInput('suit')
-      .setCheck(null);     
+      .setCheck('Suit');     
 
   this.setInputsInline(true);
 };
@@ -263,7 +267,7 @@ Blockly.Blocks['card_hasnorank'].init = function() {
   this.setOutput(true, 'Boolean');
 
   this.appendValueInput('card')
-      .setCheck(null);
+      .setCheck('Object');
 
   this.appendDummyInput()
       .appendField('has no rank?')    
@@ -352,10 +356,49 @@ Blockly.Blocks['card_isdebuffed'].init = function() {
   this.setOutput(true, 'Boolean');
 
   this.appendValueInput('card')
-      .setCheck(null);
+      .setCheck('Object');
 
   this.appendDummyInput()
       .appendField('is debuffed?')    
+
+  this.setInputsInline(true);
+};
+
+Blockly.Blocks['card_isface'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck('Object');
+
+  this.appendDummyInput()
+      .appendField('is face?')    
+
+  this.setInputsInline(true);
+};
+
+
+Blockly.Blocks['card_hasenhancement'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck('Object');
+
+  this.appendDummyInput()
+      .appendField('has enhancement')
+
+  this.appendDummyInput()
+      .appendField(new Blockly.FieldDropdown([
+        ['Base','base'],
+        ['Negative','negative'],
+        ['Foil','foil'],
+        ['Holographic','holographic'],
+        ['Polychrome','polychrome'],
+      ]), 'key'); 
+
+  this.appendDummyInput()
+      .appendField('?')
 
   this.setInputsInline(true);
 };
@@ -440,13 +483,13 @@ Blockly.Blocks['card_isrank'].init = function() {
   this.setOutput(true, 'Boolean');
 
   this.appendValueInput('card')
-      .setCheck(null);
+      .setCheck('Object');
 
   this.appendDummyInput()
       .appendField('is rank')
 
   this.appendValueInput('rank')
-      .setCheck(null);     
+      .setCheck('Rank');
 
   this.setInputsInline(true);
 };
@@ -508,7 +551,7 @@ Blockly.Blocks['card_amt'].init = function() {
 };
 
 Blockly.Blocks['cards_stuff'].init = function() {
-  this.setColour('#725cb8');
+  this.setColour('#4079aa');
   this.setOutput(true, 'Object');
 
   this.appendDummyInput()
@@ -523,6 +566,7 @@ Blockly.Blocks['cards_stuff'].init = function() {
   this.appendDummyInput()
       .appendField(new Blockly.FieldDropdown([
         ['Playing Cards [Hand]','G.hand.cards'],
+        ['Playing Cards [Play]','G.play.cards'], 
         ['Jokers','G.joker.cards'], 
         ['Consumeables','G.consumeables.cards'], 
       ]), 'cards');
@@ -700,3 +744,44 @@ Object.keys(categories).forEach(cat => {
 });
 
 document.getElementById("toolbox").innerHTML = toolboxXml;
+
+const CARD_PROPERTY_OPTIONS = {
+  'G.joker.cards':        [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set']],
+  'G.consumeables.cards': [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set']],
+  'G.hand.cards':         [['Key', 'config.center.key'],['Set', 'card.ability.set']],
+  'G.play.cards':         [['Key', 'config.center.key'],['Set', 'card.ability.set']],
+};
+const CARD_PROPERTY_DEFAULT_OPTIONS = [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set']];
+
+Blockly.Blocks['card_property'].onchange = function(event) {
+  if (!this.workspace) return;
+
+  const conn = this.getInput('v')?.connection?.targetConnection;
+  const connected = conn?.getSourceBlock();
+
+  let newOptions;
+  if (connected && connected.type === 'cards_stuff') {
+    const cardType = connected.getFieldValue('cards');
+    newOptions = CARD_PROPERTY_OPTIONS[cardType] ?? CARD_PROPERTY_DEFAULT_OPTIONS;
+  } else {
+    newOptions = CARD_PROPERTY_DEFAULT_OPTIONS;
+  }
+
+  if (newOptions.length === 0) newOptions = [['(none available)', '__none__']];
+
+  const dropdown = this.getField('t');
+  if (!dropdown) return;
+
+  // Only update if options actually changed (avoid infinite loop)
+  const current = JSON.stringify(dropdown.menuGenerator_);
+  const next = JSON.stringify(newOptions);
+  if (current === next) return;
+
+  dropdown.menuGenerator_ = newOptions;
+
+  // If current value is no longer valid, reset to first option
+  const validValues = newOptions.map(o => o[1]);
+  if (!validValues.includes(dropdown.getValue())) {
+    dropdown.setValue(newOptions[0][1]);
+  }
+};
