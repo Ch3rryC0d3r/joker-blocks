@@ -111,7 +111,7 @@ function ConditionBlocks() {
             category: 'Conditions',
             color: '#725cb8',
             output: 'Boolean',
-            tooltip: 'General/Game conditions, `Not Blueprint` is used if you don\'t want Blueprint/Brainstorm to copy that area of code.',
+            tooltip: 'General/Game conditions',
             fields: [
                 { 
                     name: 'condition', 
@@ -349,6 +349,18 @@ function LogicBlocks() {
             ],
         },         
         {
+            type: 'tonumber',
+            title: 'tonumber',
+            category: 'Logic',
+            color: '#5cb85c',
+            lua: 'tonumber([[x]])',
+            output: 'Number',
+            tooltip: 'Converts the input to a number',
+            valueInputs: [
+                { name: 'x', label: '', check: null }
+            ],
+        },
+        {
             type: 'special_operation',
             title: 'Special Operation',
             category: 'Logic',
@@ -396,7 +408,7 @@ function LogicBlocks() {
             type: 'modulo',
             title: 'modulo',
             category: 'Logic',
-            color: '#4079aa',
+            color: '#5cb85c',
             output: 'Number',
         },        
         {
@@ -426,7 +438,7 @@ function LogicBlocks() {
         {
             type: 'game_value',
             title: 'Game Value',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             output: 'String',
             tooltip: 'Gets various game state values.',
@@ -456,7 +468,7 @@ function LogicBlocks() {
         {
             type: 'joker_amt',
             title: 'Amount',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             output: 'Number',
             lua: '#SMODS.find_card("[[a]]", true)'
@@ -464,7 +476,7 @@ function LogicBlocks() {
         {
             type: 'base_id',
             title: 'Base ID of',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             lua: '[[card]].base.id',
             output: 'String',
@@ -484,7 +496,7 @@ function LogicBlocks() {
         {
             type: 'base_nominal',
             title: 'Base Nominal of',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             lua: '[[card]].base.nominal',
             output: 'String',
@@ -496,20 +508,20 @@ function LogicBlocks() {
         {
             type: 'card_amt',
             title: 'Amount',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             output: 'Number',
         },        
         {
             // most properties are in blocks.js
             type: 'pseudorandom',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
         },        
         {
             type: 'rand_suit',
             title: 'Random Suit',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             output: 'Suit',
             lua: `(function()
@@ -531,7 +543,7 @@ end)()`,
         {
             type: 'rand_rank',
             title: 'Random Rank',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             output: 'Rank',
             lua: `(function()
@@ -553,7 +565,7 @@ end)()`,
         {
             type: 'sc_card',
             title: 'Currently scoring card',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             output: 'Card',
             lua: 'context.other_card',
@@ -563,7 +575,7 @@ end)()`,
         {
             type: 'card_count',
             title: 'Amount of played cards',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             lua: '#context.full_hand',
             output: 'Number',
@@ -572,7 +584,7 @@ end)()`,
         {
             type: 'suit_return',
             title: '',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             lua: '[[suit]]',
             output: 'Suit',
@@ -590,7 +602,7 @@ end)()`,
         {
             type: 'rank_return',
             title: '',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             lua: '[[rank]]',
             output: 'Rank',
@@ -617,7 +629,7 @@ end)()`,
         {
             type: 'limit',
             title: 'Limit',
-            category: 'Logic',
+            category: 'Values',
             color: '#4079aa',
             output: 'Number',
             valueInputs: [
@@ -695,7 +707,7 @@ function ControlBlocks() {
             color: '#d07046',
             output: 'String',
             lua: 'i',
-            tooltip: 'Returns the current iterator in a (normal/adv) repeat block'
+            tooltip: 'Returns the current iterator in a (normal/advanced) repeat block'
         },        
         {
             type: 'if_else',
@@ -713,7 +725,7 @@ function ControlBlocks() {
             title: 'Repeat',
             category: 'Control',
             color: '#d07046',
-            lua: 'for i=1, [[length]] do\n[[body]]\nend\n',
+            lua: 'for iterator=1, [[length]] do\n[[body]]\nend\n',
             statementInput: 'body',
             valueInputs: [
                 { name: 'length', label: '', check: '' }
@@ -725,7 +737,7 @@ function ControlBlocks() {
             title: 'Advanced Repeat:',
             category: 'Control',
             color: '#d07046',
-            lua: 'for i=[[start]], [[end]], [[step]] do\n[[body]]\nend\n',
+            lua: 'for iterator=[[start]], [[end]], [[step]] do\n[[body]]\nend\n',
             statementInput: 'body',
             valueInputs: [
                 { name: 'start', label: 'Start', check: '' },
@@ -753,6 +765,17 @@ function GeneralBlocks() {
             tooltip: 'Name and Description for a Game Object.'
         },     
         {
+            type: 'comment_block',
+            title: 'Comment',
+            category: 'General',
+            color: '#ff9d4c',
+            lua: '-- [[comment]]',
+            fields: [
+                { name: 'comment', label: '', type: 'text' }
+            ],
+            tooltip: 'Adds a comment to the code'
+        },
+        {
             type: 'calc',
             title: 'Calculate',
             category: 'General',
@@ -764,7 +787,7 @@ function GeneralBlocks() {
         {
             type: 'change',
             title: '',
-            category: 'General',
+            category: 'Game Values',
             color: '#26aa96',
             fields: [
               { name: 't', label: 'Change', type: 'dropdown', options: ["Ante", "Dollars","Temp. Discards","Temp. Hands","Hand Size","Hands","Discards"] },
@@ -775,8 +798,8 @@ function GeneralBlocks() {
         {
             type: 'givex',
             title: '',
-            category: 'General',
-            color: '#26aa96',
+            category: 'Scoring',
+            color: '#c47c2a',
             fields: [
                 { name: 'var', label: '', type: 'dropdown', options: ['Mult','Chips','XChips','XMult','Dollars','Message']  }
             ],            
@@ -784,14 +807,14 @@ function GeneralBlocks() {
                 { name: 'amt', label: 'Add', check: null }
             ],
 
-            tooltip: 'Sets a value for a Game Object.',
+            tooltip: 'Used in Calculate, returns the selected value.',
             previousStatement: 'BlindFunction',
             nextStatement: 'BlindFunction',
         },     
         {
             type: 'create',
             title: 'Add Card',
-            category: 'General',
+            category: 'Cards',
             color: '#78944e',
             lua: 'SMODS.add_card({[[body]]\n})',
             nextStatement: 'BlindFunction',
@@ -801,17 +824,17 @@ function GeneralBlocks() {
         {
             type: 'copy_consumeable',
             title: 'Copy Consumeable',
-            category: 'General',
-            color: '#599855', // doesn't change here, modification is located in blocks.js
-            tooltip: 'Copies a specified indexed or random consumeable (If you have atleast 1.)' // doesn't change here, modification is located in blocks.js
+            category: 'Consumeables',
+            color: '#934057', // doesn't change here, modification is located in blocks.js
+            tooltip: 'Copies a specified indexed or random consumeable (If you have atleast 1)' // doesn't change here, modification is located in blocks.js
         },        
         {
             // most modifications are in blocks.js
             type: 'destroy_card',
             title: 'Destroy Card(s)', 
-            category: 'General',
+            category: 'Cards',
             color: '#599855', 
-            tooltip: 'Copies a specified indexed or random consumeable (If you have atleast 1.)'
+            tooltip: 'Copies a specified indexed or random consumeable (If you have atleast 1)'
         },  
         {
             type: 'disable_blind',
@@ -865,8 +888,8 @@ function GeneralBlocks() {
         {
             type: 'change_sfreq', // sfreq = straight/flush requirement
             title: 'Change Straight/Flush Req.',
-            category: 'General',
-            color: '#a93db5',
+            category: 'Game Values',
+            color: '#26aa96',
             fields: [
                 { name: 'a', label: 'to', type: 'text', default: '4' },
                 { name: 'id', label: 'when card id', type: 'text', default: 'myJoker' }
@@ -876,9 +899,9 @@ function GeneralBlocks() {
         {
             type: 'repeater',
             title: 'Add repetitions:',
-            category: 'General',
-            color: '#2e8f2e',
-            tooltip: 'Add repititions to cards',
+            category: 'Scoring',
+            color: '#c47c2a',
+            tooltip: 'Add repetitions to cards',
             lua: 'return {\n    repetitions = [[a]],\n}',
             fields: [
                 { name: 'a', label: '', type: 'text', default: 5 }
@@ -887,8 +910,8 @@ function GeneralBlocks() {
         {
             type: 'mod_numerator',
             title: 'Set Numerators of Chances',
-            category: 'General',
-            color: '#5a5094',
+            category: 'Scoring',
+            color: '#c47c2a',
             tooltip: 'Modify the numerators in chances, like how `Oops! All 6s` does. Numerator is the first number: >1< in 5.',
             lua: 'return {\n    numerator = [[val]]\n}',
             valueInputs: [
@@ -898,8 +921,8 @@ function GeneralBlocks() {
         {
             type: 'mod_denominator',
             title: 'Set Denominator of Chances',
-            category: 'General',
-            color: '#5a5094',
+            category: 'Scoring',
+            color: '#c47c2a',
             tooltip: 'Modify the denominator in chances. Denominator is the second number: 1 in >5<.',
             lua: 'return {\n    denominator = [[val]]\n}',
             valueInputs: [
@@ -909,8 +932,8 @@ function GeneralBlocks() {
         {
             type: 'free_rerolls',
             title: 'Give',
-            category: 'General',
-            color: '#5a5094',
+            category: 'Game Values',
+            color: '#26aa96',
             tooltip: 'Adds X free rerolls to the next shop',
             lua: 'SMODS.change_free_rerolls([[val]])',
             valueInputs: [
@@ -920,8 +943,8 @@ function GeneralBlocks() {
         {
             type: 'game_value_set',
             title: 'Set Game Value',
-            category: 'General',
-            color: '#286b9e',
+            category: 'Game Values',
+            color: '#26aa96',
             lua: '[[var]] = [[val]]',
             tooltip: 'Sets various game values.',
         },                                                               

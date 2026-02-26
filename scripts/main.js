@@ -576,6 +576,15 @@ window.addEventListener("load", () => {
 
     let toolboxXml = '';
     
+    // Subcategories nested inside a parent: { child: parent }
+    const subcategoryMap = {
+      'Consumeables': 'General',
+      'Scoring':      'General',
+      'Cards':        'General',
+      'Game Values':  'General',
+      'Values':       'Logic'
+    };
+
     // Add categories in defined order
     categoryOrder.forEach(cat => {
       if (categories[cat]) {
@@ -584,13 +593,24 @@ window.addEventListener("load", () => {
         categories[cat].forEach(type => {
           toolboxXml += `<block type="${type}"></block>`;
         });
+        // Inject subcategories that belong to this parent
+        Object.entries(subcategoryMap).forEach(([child, parent]) => {
+          if (parent === cat && categories[child]) {
+            const childColor = BLOCK_DEFS.find(b => b.category === child)?.color || color;
+            toolboxXml += `<category name="${child}" colour="${childColor}">`;
+            categories[child].forEach(type => {
+              toolboxXml += `<block type="${type}"></block>`;
+            });
+            toolboxXml += `</category>`;
+          }
+        });
         toolboxXml += `</category>`;
       }
     });
 
     // Add any new categories at the bottom (before Variables)
     Object.keys(categories).forEach(cat => {
-      if (!categoryOrder.includes(cat)) {
+      if (!categoryOrder.includes(cat) && !subcategoryMap[cat]) {
         const color = BLOCK_DEFS.find(b => b.category === cat)?.color || "#ccc";
         toolboxXml += `<category name="${cat}" colour="${color}">`;
         categories[cat].forEach(type => {

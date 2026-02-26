@@ -562,8 +562,6 @@ Blockly.Lua.forBlock['cards_stuff'] = function(block) {
     } else {
       return ``;
     }
-    
-   
 };
 
 Blockly.Lua.forBlock['card_conditions'] = function(block) {

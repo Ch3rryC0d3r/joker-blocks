@@ -188,7 +188,7 @@ Object.keys(Blockly.Blocks).forEach(blockType => {
 });
 
 Blockly.Blocks['givex'].init = function() {
-  this.setColour('#26aa96');
+  this.setColour('#c47c2a');
   this.appendDummyInput()
       .appendField('Add')
       .appendField(new Blockly.FieldDropdown([
@@ -209,11 +209,13 @@ Blockly.Blocks['givex'].init = function() {
 };
 
 Blockly.Blocks['game_value_set'].init = function() {
-  this.setColour('#286b9e');
+  this.setColour('#26aa96');
   this.appendDummyInput()
       .appendField('Set Game value')
       .appendField(new Blockly.FieldDropdown([
-        ['Maximum Bankruptcy','G.GAME.bankrupt_at']
+        ['Maximum Bankruptcy','G.GAME.bankrupt_at'],
+        ['Dollars','G.GAME.dollars'],
+        ['Round', 'G.GAME.round'],
       ]), 'var')
       .appendField('to');
       
@@ -225,7 +227,7 @@ Blockly.Blocks['game_value_set'].init = function() {
 };
 
 Blockly.Blocks['repeater'].init = function() {
-  this.setColour('#2e8f2e');
+  this.setColour('#c47c2a');
   this.appendDummyInput()
       .appendField('Add');
       
@@ -329,7 +331,7 @@ Blockly.Blocks['localize'].init = function() {
 };
 
 Blockly.Blocks['free_rerolls'].init = function() {
-  this.setColour('#5a5094');
+  this.setColour('#26aa96');
 
   this.appendDummyInput()
       .appendField('Add')      
@@ -387,7 +389,7 @@ Blockly.Blocks['copy_consumeable'].init = function() {
 };
 
 Blockly.Blocks['destroy_card'].init = function() {
-  this.setColour('#934057');
+  this.setColour('#78944e');
 
   this.appendDummyInput()
       .appendField('Destroy,');
@@ -651,14 +653,50 @@ Blockly.Blocks['var_change'] = {
 };
 
 // toolbox
+const subcategoryMap = {
+  'Consumeables': 'General',
+  'Scoring':      'General',
+  'Cards':        'General',
+  'Game Values':  'General',
+  'Values':       'Logic'
+};
+
+const categoryOrder = [
+  'General', 'Game Objects', 'Creation', 'Control',
+  'Tags', 'Joker', 'Logic', 'Atlas', 'Blind', 'Sound', 'Variables'
+];
+
 let toolboxXml = '';
-Object.keys(categories).forEach(cat => {
+
+categoryOrder.forEach(cat => {
+  if (!categories[cat]) return;
   const color = BLOCK_DEFS.find(b => b.category === cat)?.color || "#ccc";
   toolboxXml += `<category name="${cat}" colour="${color}">`;
   categories[cat].forEach(type => {
     toolboxXml += `<block type="${type}"></block>`;
   });
+  Object.entries(subcategoryMap).forEach(([child, parent]) => {
+    if (parent === cat && categories[child]) {
+      const childColor = BLOCK_DEFS.find(b => b.category === child)?.color || color;
+      toolboxXml += `<category name="${child}" colour="${childColor}">`;
+      categories[child].forEach(type => {
+        toolboxXml += `<block type="${type}"></block>`;
+      });
+      toolboxXml += `</category>`;
+    }
+  });
   toolboxXml += `</category>`;
+});
+
+Object.keys(categories).forEach(cat => {
+  if (!categoryOrder.includes(cat) && !subcategoryMap[cat]) {
+    const color = BLOCK_DEFS.find(b => b.category === cat)?.color || "#ccc";
+    toolboxXml += `<category name="${cat}" colour="${color}">`;
+    categories[cat].forEach(type => {
+      toolboxXml += `<block type="${type}"></block>`;
+    });
+    toolboxXml += `</category>`;
+  }
 });
 
 document.getElementById("toolbox").innerHTML = toolboxXml;
