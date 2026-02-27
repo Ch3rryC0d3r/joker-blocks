@@ -377,6 +377,44 @@ Blockly.Blocks['card_isface'].init = function() {
   this.setInputsInline(true);
 };
 
+Blockly.Blocks['card_iseternal'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck('Object');
+
+  this.appendDummyInput()
+      .appendField('is eternal?')
+
+  this.setInputsInline(true);
+};
+
+Blockly.Blocks['card_isperishable'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck('Object');
+
+  this.appendDummyInput()
+      .appendField('is perishable?')
+
+  this.setInputsInline(true);
+};
+
+Blockly.Blocks['card_isrental'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck('Object');
+
+  this.appendDummyInput()
+      .appendField('is rental?')    
+
+  this.setInputsInline(true);
+};
 
 Blockly.Blocks['card_hasedition'].init = function() {
   this.setColour('#725cb8');
@@ -423,6 +461,30 @@ Blockly.Blocks['card_hasenhancement'].init = function() {
         ['Steel','steel'],
         ['Mult','mult'],
         ['Bonus','Bonus'],
+      ]), 'key'); 
+
+  this.appendDummyInput()
+      .appendField('?')
+
+  this.setInputsInline(true);
+};
+
+Blockly.Blocks['card_hasseal'].init = function() {
+  this.setColour('#725cb8');
+  this.setOutput(true, 'Boolean');
+
+  this.appendValueInput('card')
+      .setCheck('Object');
+
+  this.appendDummyInput()
+      .appendField('has seal')
+
+  this.appendDummyInput()
+      .appendField(new Blockly.FieldDropdown([
+        ['Red','Red'],
+        ['Gold','Gold'],
+        ['Blue','Blue'],
+        ['Purple','Purple'],
       ]), 'key'); 
 
   this.appendDummyInput()
@@ -644,8 +706,14 @@ Blockly.Blocks['pseudorandom'].init = function() {
   this.appendValueInput('max')
       .setCheck(null);
 
+  this.appendDummyInput()
+      .appendField('seed')
+
+  this.appendValueInput('seed')
+      .setCheck(null);
+
   this.setInputsInline(true);
-  this.setTooltip('Returns a random value between two (Random Seed).');
+  this.setTooltip('Returns a random number between two using `pseudorandom(...)` (seed is random if none is provided).');
 };
 
 // helper to build dropdown menu

@@ -322,7 +322,14 @@ Blockly.Lua.forBlock['check_suit'] = function(block) {
 Blockly.Lua.forBlock['pseudorandom'] = function(block) {
   const minBlock = block.getInputTargetBlock('min');
   const maxBlock = block.getInputTargetBlock('max');
-  const seed = generateRandomString(10);
+  let seed = generateRandomString(10);
+
+  if (block.getInputTargetBlock('seed')) {
+    seed = `${block.getInputTargetBlock('seed')}`;
+  } else {
+    let randomSeed = seed
+    seed = `pseudoseed('${randomSeed}')`
+  }
 
   let minCode = '0';
   let maxCode = '0';
@@ -339,7 +346,7 @@ Blockly.Lua.forBlock['pseudorandom'] = function(block) {
     maxCode = maxCode.replace(/\n$/, '');
   }
 
-  return [`pseudorandom(pseudoseed('${seed}'), ${minCode}, ${maxCode})`, Blockly.Lua.ORDER_ATOMIC];
+  return [`pseudorandom(${seed}, ${minCode}, ${maxCode})`, Blockly.Lua.ORDER_ATOMIC];
 };
 
 Blockly.Lua.forBlock['if_else'] = function(block) {
@@ -605,6 +612,8 @@ Blockly.Lua.forBlock['game_conditions'] = function(block) {
             return ['context.first_hand_drawn', Blockly.Lua.ORDER_ATOMIC];
         case "skipping blind":
             return ['context.skip_blind', Blockly.Lua.ORDER_ATOMIC];
+        case "scoring":
+            return ['context.scoring_name', Blockly.Lua.ORDER_ATOMIC];
         default:
             return [condition, Blockly.Lua.ORDER_ATOMIC];
     }

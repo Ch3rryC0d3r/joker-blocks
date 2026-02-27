@@ -129,7 +129,7 @@ function ConditionBlocks() {
                         ['Shop rerolled','shop rerolled'],
                         ['Before total score', 'before total score'],
                         ['Before scoring', 'before scoring'],
-                        ['After scoring', 'after scoring'],
+                        ['Scoring', 'scoring'],
                         ['First hand drawn','first hand drawn'],
                         ['Skipping blind','skipping blind'],
                     ]
@@ -231,6 +231,33 @@ function ConditionBlocks() {
             tooltip: 'Whether or not a playing card is debuffed'
         },       
         {
+            type: 'card_iseternal',
+            title: '',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: 'SMODS.is_eternal([[card]])',
+            output: 'Boolean',
+            tooltip: 'Whether or not a playing card has the sticker "Eternal"'
+        },
+        {
+            type: 'card_isrental',
+            title: '',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: 'card.ability.rental',
+            output: 'Boolean',
+            tooltip: 'Whether or not a playing card has the sticker "Rental"'
+        },
+        {
+            type: 'card_isperishable',
+            title: '',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: 'card.ability.perishable',
+            output: 'Boolean',
+            tooltip: 'Whether or not a playing card has the sticker "Perishable"'
+        },
+        {
             type: 'card_isface',
             title: 'is face?',
             category: 'Conditions',
@@ -246,7 +273,7 @@ function ConditionBlocks() {
             color: '#725cb8',
             lua: '[[card]].edition and [[card]].edition.key == "e_[[key]]"',
             output: 'Boolean',
-            tooltip: 'Whether or not a playing card is a face card'
+            tooltip: 'Returns true if a card has the selected edition'
         },
         {
             type: 'card_hasenhancement',
@@ -255,14 +282,39 @@ function ConditionBlocks() {
             color: '#725cb8',
             lua: 'SMODS.has_enhancement([[card]], "m_[[key]]")',
             output: 'Boolean',
-            tooltip: 'Whether or not a playing card is a face card'
+            tooltip: 'Returns true if a card has the selected enhancement'
+        },
+        {
+            type: 'card_hasseal',
+            title: '',
+            category: 'Conditions',
+            color: '#725cb8',
+            lua: '[[card]].seal and [[card]].seal == "[[key]]"',
+            output: 'Boolean',
+            tooltip: 'Returns true if a card has the selected seal'
         },
         {
             // most properties changed in blocks.js
             type: 'in_blind',
             title: 'In [] Blind',
             category: 'Conditions',
-        },                                     
+        },        
+        {
+            type: 'true',
+            title: 'True',
+	    color: '#725cb8',
+            output: 'Boolean',
+	    lua: 'true',
+            category: 'Conditions',
+        },
+        {
+            type: 'false',
+            title: 'False',
+	    color: '#725cb8',
+            output: 'Boolean',
+	    lua: 'false',
+            category: 'Conditions',
+        },
     ]
 }
 
@@ -682,6 +734,34 @@ end)()`,
             ],
             lua: '[[v]].[[t]]',
             tooltip: 'Gets a property of a card (i.e. Sell value of a joker)'
+        },      
+        {
+            type: 'area_exist',
+            title: '',
+            fieldsFirst: true,
+            inlineInputs: true,
+            category: 'Values',
+            color: '#4079aa',
+            output: 'Table',
+            fields: [
+              { name: 'area', label: 'Get Area', type: 'dropdown', options: ['G.play','G.play.cards','G.consumeables','G.consumeables.cards','G.jokers','G.jokers.cards','G.hand','G.hand.cards'] },
+            ],
+            lua: '[[area]]',
+            tooltip: 'Gets the selected area, can be used to check if an area currently exists'
+        },
+        {
+            type: 'table_index',
+            title: '',
+            inlineInputs: true,
+            category: 'Values',
+            color: '#4079aa',
+            output: 'Number',
+            valueInputs: [
+                { name: 'index', label: 'Get item of index', check: null },
+                { name: 'table', label: 'in table', check: null },
+            ],
+            lua: '[[table]][[[index]]]',
+            tooltip: 'Gets the selected index of the provided table'
         },
     ]
 }
