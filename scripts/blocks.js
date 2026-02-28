@@ -659,6 +659,8 @@ Blockly.Blocks['cards_stuff'].init = function() {
         ['Playing Cards [Play]','G.play.cards'], 
         ['Jokers','G.joker.cards'], 
         ['Consumeables','G.consumeables.cards'], 
+        ['Full Deck','G.playing_cards'], 
+        ['(Context) Card Effects','context.card_effects'], 
       ]), 'cards');
       
   this.setInputsInline(true);

@@ -1,0 +1,151 @@
+25/150 (16%) Possible
+001 . ✅ Joker (Jimbo)
+002 . ✅ Greedy Joker
+003 . ✅ Lusty Joker
+004 . ✅ Wrathful Joker
+005 . ✅ Gluttonous Joker
+006 . ✅ Jolly Joker
+007 . ✅ Zany Joker
+008 . ✅ Mad Joker
+009 . ✅ Crazy Joker
+010 . ✅ Droll Joker
+011 . ✅ Sly Joker
+012 . ✅ Wily Joker
+013 . ✅ Clever Joker
+014 . ✅ Devious Joker
+015 . ✅ Crafty Joker
+016 . ✅ Half Joker
+017 . ✅ Joker Stencil
+018 . ✅ Four Fingers
+019 . ✅ Mime
+020 . ✅ Credit Card
+021 . ✅ Ceremonial Dagger
+022 . 🔲 Banner
+023 . 🔲 Mystic Summit
+024 . 🔲 Marble Joker
+025 . 🔲 Loyalty Card
+026 . 🔲 8 Ball
+027 . 🔲 Misprint
+028 . 🔲 Dusk
+029 . 🔲 Raised Fist
+030 . 🔲 Chaos the Clown
+031 . 🔲 Fibonacci
+032 . ✅ Steel Joker
+033 . ✅ Scary Face
+034 . ✅ Abstract Joker
+035 . 🔲 Delayed Gratification
+036 . 🔲 Hack
+037 . 🔲 Pareidolia
+038 . 🔲 Gros Michel
+039 . 🔲 Even Steven
+040 . 🔲 Odd Todd
+041 . 🔲 Scholar
+042 . 🔲 Business Card
+043 . 🔲 Supernova
+044 . 🔲 Ride the Bus
+045 . 🔲 Space Joker
+046 . 🔲 Egg
+047 . 🔲 Burglar
+048 . 🔲 Blackboard
+049 . 🔲 Runner
+050 . 🔲 Ice Cream
+051 . 🔲 DNA
+052 . 🔲 Splash
+053 . 🔲 Blue Joker
+054 . 🔲 Sixth Sense
+055 . 🔲 Constellation
+056 . 🔲 Hiker
+057 . 🔲 Faceless Joker
+058 . 🔲 Green Joker
+059 . 🔲 Superposition
+060 . 🔲 To Do List
+061 . 🔲 Cavendish
+062 . 🔲 Card Sharp
+063 . 🔲 Red Card
+064 . 🔲 Madness
+065 . 🔲 Square Joker
+066 . 🔲 Séance
+067 . 🔲 Riff-raff
+068 . 🔲 Vampire
+069 . 🔲 Shortcut
+070 . 🔲 Hologram
+071 . 🔲 Vagabond
+072 . 🔲 Baron
+073 . 🔲 Cloud 9
+074 . 🔲 Rocket
+075 . 🔲 Obelisk
+076 . 🔲 Midas Mask
+077 . 🔲 Luchador
+078 . 🔲 Photograph
+079 . 🔲 Gift Card
+080 . 🔲 Turtle Bean
+081 . 🔲 Erosion
+082 . 🔲 Reserved Parking
+083 . 🔲 Mail-In Rebate
+084 . 🔲 To the Moon
+085 . 🔲 Hallucination
+086 . 🔲 Fortune Teller
+087 . 🔲 Juggler
+088 . 🔲 Drunkard
+089 . 🔲 Stone Joker
+090 . 🔲 Golden Joker
+091 . 🔲 Lucky Cat
+092 . 🔲 Baseball Card
+093 . 🔲 Bull
+094 . 🔲 Diet Cola
+095 . 🔲 Trading Card
+096 . 🔲 Flash Card
+097 . 🔲 Popcorn
+098 . 🔲 Spare Trousers
+099 . 🔲 Ancient Joker
+100 . 🔲 Ramen
+101 . 🔲 Walkie Talkie
+102 . 🔲 Seltzer
+103 . 🔲 Castle
+104 . 🔲 Smiley Face
+105 . 🔲 Campfire
+106 . 🔲 Golden Ticket
+107 . 🔲 Mr. Bones
+108 . 🔲 Acrobat
+109 . 🔲 Sock and Buskin
+110 . 🔲 Swashbuckler
+111 . 🔲 Troubadour
+112 . 🔲 Certificate
+113 . 🔲 Smeared Joker
+114 . 🔲 Throwback
+115 . 🔲 Hanging Card
+116 . 🔲 Rough Gem
+117 . 🔲 Bloodstone
+118 . 🔲 Arrowhead
+119 . 🔲 Onyx Agate
+120 . 🔲 Glass Joker
+121 . 🔲 Showman
+122 . 🔲 Flower Pot
+123 . 🔲 Blueprint
+124 . ✅ Wee Joker
+125 . 🔲 Merry Andy
+126 . ✅ Oops! All 6s
+127 . 🔲 The Idol
+128 . 🔲 Seeing Double
+129 . 🔲 Matador
+130 . 🔲 Hit the Road
+131 . 🔲 The Duo
+132 . 🔲 The Trio
+133 . 🔲 The Family
+134 . 🔲 The Order
+135 . 🔲 The Tribe
+136 . 🔲 Stuntman
+137 . 🔲 Invisible Joker
+138 . 🔲 Brainstorm
+139 . 🔲 Satellite
+140 . 🔲 Shoot the Moon
+141 . 🔲 Driver's License
+142 . 🔲 Cartomancer
+143 . 🔲 Astronomer
+144 . 🔲 Burnt Joker
+145 . 🔲 Bootstraps
+146 . 🔲 Canio
+147 . 🔲 Triboulet
+148 . 🔲 Yorick
+149 . 🔲 Chicot
+150 . ✅ Perkeo

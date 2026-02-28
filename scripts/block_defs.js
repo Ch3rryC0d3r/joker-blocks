@@ -149,7 +149,7 @@ function ConditionBlocks() {
                     label: 'is', 
                     type: 'dropdown', 
                     options: [
-                        ['Playing Card Repetition','context.repetition and context.cardarea == G.play'],
+                        ['Card Repetition','context.repetition'],
                         ['Modifying Chances','context.mod_probability'],
                         ['Not Blueprint','not context.blueprint'],  
                         ['Pre-Discard','context.pre_discard'],
@@ -344,6 +344,18 @@ function LogicBlocks() {
             tooltip: 'Negates a condition'
         },
         {
+            type: 'or',
+            title: '',
+            category: 'Logic',
+            color: '#5cb85c',
+            output: 'Boolean',
+            valueInputs: [
+                { name: 'left', label: '', check: 'Boolean' },
+                { name: 'right', label: 'or', check: 'Boolean' }
+            ],
+            tooltip: 'At least one condition must be true'
+        },
+        {
             type: 'string_contains',
             title: '',
             inlineInputs: true,
@@ -501,19 +513,7 @@ function LogicBlocks() {
                 { name: 'right', label: '/' }
             ],
             tooltip: 'Returns `A / B` (A being left value, B being right value)'
-        },                         
-        {
-            type: 'or',
-            title: '',
-            category: 'Logic',
-            color: '#5cb85c',
-            output: 'Boolean',
-            valueInputs: [
-                { name: 'left', label: '', check: 'Boolean' },
-                { name: 'right', label: 'or', check: 'Boolean' }
-            ],
-            tooltip: 'At least one condition must be true'
-        },     
+        },                            
         {
             type: 'game_value',
             title: 'Game Value',
@@ -540,6 +540,8 @@ function LogicBlocks() {
                         ['Maximum Bankruptcy','G.GAME.bankrupt_at'],
                         ['Chance Numerator','context.numerator'],
                         ['Chance Denominator','context.denominator'],
+						['# of Cards in Full Deck','#G.playing_cards'],
+						['# of card effects','#context.card_effects'],
                     ]
                 }
             ]
@@ -572,6 +574,17 @@ function LogicBlocks() {
             lua: 'localize("[[input]]")',
             output: 'String'
         },         
+        {
+            type: 'next',
+            title: 'next',
+            category: 'General',
+            color: '#4079aa',
+            lua: 'next([[input]])',
+            output: 'Boolean',
+            valueInputs: [
+                { name: 'input', label: '', check: null }
+            ],
+        },
         {
             type: 'base_nominal',
             title: 'Base Nominal of',
@@ -646,7 +659,7 @@ end)()`,
             title: 'Currently scoring card',
             category: 'Values',
             color: '#4079aa',
-            output: 'Card',
+            output: 'Object',
             lua: 'context.other_card',
             tooltip: 'Returns the currently scoring card, usually.',
         },    
@@ -828,7 +841,7 @@ function ControlBlocks() {
             category: 'Control',
             color: '#d07046',
             output: 'String',
-            lua: 'i',
+            lua: 'iterator',
             tooltip: 'Returns the current iterator in a (normal/advanced) repeat block'
         },        
         {
@@ -887,6 +900,17 @@ function GeneralBlocks() {
             tooltip: 'Name and Description for a Game Object.'
         },     
         {
+            type: 'return',
+            title: 'Return',
+            category: 'General',
+            color: '#b8cf72',//#3a2a6b 
+            lua: 'return [[return]]',
+            valueInputs: [
+                { name: 'return', label: '', check: null }
+            ],
+            tooltip: 'Returns a value'
+        },
+        {
             type: 'comment_block',
             title: 'Comment',
             category: 'General',
@@ -906,6 +930,70 @@ function GeneralBlocks() {
             statementInput: 'body',
             tooltip: 'Creates a calculate function. Usually called after most actions.'
         },
+        {
+            type: 'in_pool',
+            title: 'In Pool',
+            category: 'General',
+            color: '#d07046',
+            lua: 'in_pool = function(self, args)[[body]]end,\n',
+            statementInput: 'body',
+            tooltip: 'Determine conditions for whether or not this object can spawn'
+        },
+        {
+            type: 'loc_vars',
+            title: 'Local Variables',
+            category: 'General',
+            color: '#3B4252',
+            lua: 'loc_vars = function(self, info_queue, card)\n    return { vars = { [[body]] } }\nend,\n',
+            statementInput: 'body',
+            tooltip: 'Local variables for an object. Use the `Return variable` block inside this.'
+        },
+        {
+            type: 'return_loc_var',
+            title: 'Return variable',
+            category: 'General',
+            color: '#D67C7C',
+            lua: '[[var]], ',
+            tooltip: 'Placed in the `Local Variables` block',
+            valueInputs: [
+                { name: 'var', label: '', check: null }
+            ],
+        },
+        {
+            type: 'extra_config',
+            title: 'Extra Config',
+            category: 'General',
+            color: '#4F739C',
+            lua: 'config = { extra = { [[body]] }, },\n',
+            statementInput: 'body',
+            tooltip: 'Variables for an object. Use the `Add to config` block inside this.'
+        },
+        {
+            type: 'add_to_config',
+            title: 'Add to config: ',
+			inlineInputs: true,
+            category: 'General',
+            color: '#D6A77C',
+            lua: '[[name]] = [[value]], ',
+            tooltip: 'Placed in the `Extra Config` block',
+            valueInputs: [
+                { name: 'name', label: 'Name', check: null },
+                { name: 'value', label: 'Value', check: null }				
+            ],
+        },
+        {
+            type: 'get_from_config',
+            title: 'Get extra config: ',
+			inlineInputs: true,
+            category: 'General',
+            color: '#D6A77C',
+			output: 'String',
+            lua: 'card.ability.extra.[[name]]',
+            tooltip: 'Gets a variable from extra config (`card.ability.extra.NAME`)',
+            valueInputs: [
+                { name: 'name', label: 'Name', check: null },			
+            ],
+        },		
         {
             type: 'change',
             title: '',
@@ -1266,6 +1354,18 @@ function JokerFunctionBlocks() {
             ],
             tooltip: 'Rarity for this Joker. 1 = Common, 2 = Uncommon, 3 = Rare, 4 = Legendary. For custom rarities use "modprefix_Rarity"'
         },     
+        {
+            type: 'joker_display_size',
+            title: 'Display Size: ',
+            category: 'Joker',
+            color: '#4495a1',
+            lua: 'display_size = {w=[[w]], h=[[h]]},\n',
+            fields: [
+                { name: 'w', label: 'Width', type: 'text', default: 71 },
+                { name: 'h', label: 'Height', type: 'text', default: 95 }				
+            ],
+            tooltip: 'Changes the display size of cards by scaling them by a factor relative to pixel size (default: 71x95).'
+        },
         {
             type: 'joker_pos',
             title: 'My Position',

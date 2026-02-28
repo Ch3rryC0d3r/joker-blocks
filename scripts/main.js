@@ -55,6 +55,176 @@
   };
 })();
 
+//
+// TAB MANAGEMENT 
+//
+const TABS_KEY = "jokerblocks_tabs";
+const ACTIVE_TAB_KEY = "jokerblocks_active_tab";
+
+function generateTabId() {
+  return 'tab_' + Date.now() + '_' + Math.random().toString(36).substr(2, 5);
+}
+
+function getDefaultTabs() {
+  return [{ id: generateTabId(), name: "Main", xml: "" }];
+}
+
+window.tabs = [];
+window.activeTabId = null;
+
+function loadTabsFromStorage() {
+  try {
+    const saved = localStorage.getItem(TABS_KEY);
+    if (saved) {
+      window.tabs = JSON.parse(saved);
+      if (!Array.isArray(window.tabs) || window.tabs.length === 0) throw new Error("bad tabs");
+    } else {
+      // Migrate legacy single workspace if present
+      const legacy = localStorage.getItem("jokerblocks_workspace");
+      window.tabs = getDefaultTabs();
+      if (legacy) window.tabs[0].xml = legacy;
+    }
+    const savedActive = localStorage.getItem(ACTIVE_TAB_KEY);
+    window.activeTabId = (savedActive && window.tabs.find(t => t.id === savedActive))
+      ? savedActive : window.tabs[0].id;
+  } catch (e) {
+    window.tabs = getDefaultTabs();
+    window.activeTabId = window.tabs[0].id;
+  }
+}
+
+function persistTabs() {
+  localStorage.setItem(TABS_KEY, JSON.stringify(window.tabs));
+  localStorage.setItem(ACTIVE_TAB_KEY, window.activeTabId);
+}
+
+function getCurrentTab() {
+  return window.tabs.find(t => t.id === window.activeTabId);
+}
+
+function snapshotCurrentTab() {
+  const tab = getCurrentTab();
+  if (!tab || !window.workspace) return;
+  const xml = Blockly.Xml.workspaceToDom(window.workspace);
+  tab.xml = Blockly.Xml.domToText(xml);
+}
+
+function applyTabToWorkspace(tab) {
+  if (!window.workspace) return;
+  window.workspace.clear();
+  if (tab && tab.xml) {
+    try {
+      const xml = Blockly.utils.xml.textToDom(tab.xml);
+      Blockly.Xml.domToWorkspace(xml, window.workspace);
+    } catch (e) { console.error("Tab load error:", e); }
+  }
+}
+
+function switchToTab(id) {
+  if (id === window.activeTabId) return;
+  snapshotCurrentTab();
+  persistTabs();
+  window.activeTabId = id;
+  localStorage.setItem(ACTIVE_TAB_KEY, id);
+  applyTabToWorkspace(getCurrentTab());
+  renderTabs();
+  setTimeout(() => { refreshVariableDropdowns(); }, 100);
+}
+
+function addNewTab() {
+  snapshotCurrentTab();
+  const id = generateTabId();
+  const num = window.tabs.length + 1;
+  window.tabs.push({ id, name: `Tab ${num}`, xml: "" });
+  window.activeTabId = id;
+  window.workspace.clear();
+  persistTabs();
+  renderTabs();
+}
+
+function deleteTab(id) {
+  if (window.tabs.length <= 1) { alert("Can't delete the only tab!"); return; }
+  const tab = window.tabs.find(t => t.id === id);
+  if (!confirm(`Delete tab "${tab?.name}"? Blocks inside will be lost.`)) return;
+  const idx = window.tabs.findIndex(t => t.id === id);
+  window.tabs.splice(idx, 1);
+  if (window.activeTabId === id) {
+    window.activeTabId = window.tabs[Math.max(0, idx - 1)].id;
+    applyTabToWorkspace(getCurrentTab());
+  }
+  persistTabs();
+  renderTabs();
+  setTimeout(() => { refreshVariableDropdowns(); }, 100);
+}
+
+function renameTab(id, newName) {
+  const tab = window.tabs.find(t => t.id === id);
+  if (tab) { tab.name = newName || tab.name; persistTabs(); }
+}
+
+function renderTabs() {
+  const bar = document.getElementById("tabBar");
+  if (!bar) return;
+  bar.innerHTML = "";
+
+  window.tabs.forEach(tab => {
+    const tabEl = document.createElement("div");
+    tabEl.className = "tab-item" + (tab.id === window.activeTabId ? " active" : "");
+
+    const label = document.createElement("span");
+    label.className = "tab-label";
+    label.textContent = tab.name;
+    label.title = "Click to switch · Double-click to rename";
+
+    label.addEventListener("click", () => switchToTab(tab.id));
+    label.addEventListener("dblclick", (e) => {
+      e.stopPropagation();
+      const inp = document.createElement("input");
+      inp.type = "text";
+      inp.value = tab.name;
+      inp.style.cssText = "width:90px;border:none;outline:1px solid #1a73e8;background:transparent;color:inherit;font-size:13px;font-weight:bold;border-radius:3px;padding:0 2px;";
+      label.replaceWith(inp);
+      inp.focus(); inp.select();
+      const commit = () => { renameTab(tab.id, inp.value.trim()); renderTabs(); };
+      inp.addEventListener("blur", commit);
+      inp.addEventListener("keydown", e => { if (e.key === "Enter") commit(); if (e.key === "Escape") renderTabs(); });
+    });
+
+    tabEl.appendChild(label);
+
+    if (window.tabs.length > 1) {
+      const x = document.createElement("span");
+      x.className = "tab-close";
+      x.textContent = "×";
+      x.title = "Delete tab";
+      x.addEventListener("click", (e) => { e.stopPropagation(); deleteTab(tab.id); });
+      tabEl.appendChild(x);
+    }
+
+    bar.appendChild(tabEl);
+  });
+
+  const addBtn = document.createElement("button");
+  addBtn.id = "addTabBtn";
+  addBtn.textContent = "+";
+  addBtn.title = "New tab";
+  addBtn.addEventListener("click", addNewTab);
+  bar.appendChild(addBtn);
+}
+
+// Helper: merge all tabs into combined XML for code generation
+function getAllTabsXml() {
+  snapshotCurrentTab();
+  let allBlocks = '';
+  window.tabs.forEach(tab => {
+    if (tab.xml) {
+      const m = tab.xml.match(/<xml[^>]*>([\s\S]*?)<\/xml>/);
+      if (m) allBlocks += m[1];
+    }
+  });
+  return `<xml xmlns="https://developers.google.com/blockly/xml">${allBlocks}</xml>`;
+}
+
 // load vars from localStorage
 window.customVariables = JSON.parse(localStorage.getItem("customVariables") || "[]");
 
@@ -257,27 +427,18 @@ window.addEventListener("load", () => {
   }
 
   function saveWorkspace() {
-    const xml = Blockly.Xml.workspaceToDom(workspace);
-    const xmlText = Blockly.Xml.domToText(xml);
-    localStorage.setItem(WORKSPACE_KEY, xmlText);
+    snapshotCurrentTab();
+    persistTabs();
   }
   
   function loadWorkspace() {
-      const xmlText = localStorage.getItem(WORKSPACE_KEY);
-      if (xmlText) {
-        try {
-          const xml = Blockly.utils.xml.textToDom(xmlText);
-          Blockly.Xml.domToWorkspace(xml, workspace);
-        } catch (e) {
-          console.error("Error loading workspace:", e);
-        }
-      }
-
-      // wait a bit before refreshing to avoid triple popup glitch
-      setTimeout(() => {
-        refreshVariableDropdowns();
-        updateModPrefix();  //  update prefix after loading
-      }, 100);
+    loadTabsFromStorage();
+    applyTabToWorkspace(getCurrentTab());
+    renderTabs();
+    setTimeout(() => {
+      refreshVariableDropdowns();
+      updateModPrefix();
+    }, 100);
   }
 
   function updateModPrefix() {
@@ -790,10 +951,14 @@ window.addEventListener("load", () => {
 
   // --- Buttons ---
   function saveProjectFile() {
-    const xml = Blockly.Xml.workspaceToDom(workspace);
-    const xmlText = Blockly.Xml.domToPrettyText(xml);
+    snapshotCurrentTab();
+    const data = {
+      version: 2,
+      tabs: window.tabs,
+      activeTabId: window.activeTabId
+    };
     const name = (projectInput.value || "MyMod").replace(/[^a-z0-9_\-]/gi, "_");
-    const blob = new Blob([xmlText], { type: "text/plain" });
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: "application/json" });
     const a = document.createElement("a");
     a.href = URL.createObjectURL(blob);
     a.download = `${name}.bf`;
@@ -811,19 +976,33 @@ window.addEventListener("load", () => {
       const reader = new FileReader();
       reader.onload = ev => {
         try {
-          const xmlText = ev.target.result.trim();
-          if (!xmlText.startsWith("<xml")) throw new Error("Invalid XML");
-          setTimeout(() => {
-            const xml = Blockly.utils.xml.textToDom(xmlText);
-            workspace.clear();
-            window.customVariables = [];
-            saveVariables();
-            refreshVariableDropdowns();
-            Blockly.Xml.domToWorkspace(xml, workspace);
-            projectInput.value = file.name.replace(/\.bf$/i, "");
-            saveProjectName(projectInput.value);
-            updateModPrefix();
-          }, 200);
+          const text = ev.target.result.trim();
+          workspace.clear();
+          window.customVariables = [];
+          saveVariables();
+          refreshVariableDropdowns();
+
+          if (text.startsWith("<xml")) {
+            // Legacy single-workspace format
+            window.tabs = [{ id: generateTabId(), name: "Main", xml: text }];
+            window.activeTabId = window.tabs[0].id;
+          } else {
+            const data = JSON.parse(text);
+            if (data.version === 2 && Array.isArray(data.tabs) && data.tabs.length > 0) {
+              window.tabs = data.tabs;
+              window.activeTabId = (data.activeTabId && data.tabs.find(t => t.id === data.activeTabId))
+                ? data.activeTabId : data.tabs[0].id;
+            } else {
+              throw new Error("Unknown .bf format");
+            }
+          }
+
+          persistTabs();
+          applyTabToWorkspace(getCurrentTab());
+          renderTabs();
+          projectInput.value = file.name.replace(/\.bf$/i, "");
+          saveProjectName(projectInput.value);
+          setTimeout(() => { refreshVariableDropdowns(); updateModPrefix(); }, 200);
         } catch (err) { alert("Failed to load project."); console.error(err); }
       };
       reader.readAsText(file);
@@ -832,14 +1011,22 @@ window.addEventListener("load", () => {
   }
 
   function generateLua() {
-    // reset hook list before generation
-    Blockly.Lua.hooks = [];
-    let code = Blockly.Lua.workspaceToCode(workspace);
+    // Load all tabs into a temp workspace for generation
+    const combinedXml = getAllTabsXml();
+    const tempDiv = document.createElement('div');
+    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;visibility:hidden;';
+    document.body.appendChild(tempDiv);
+    const tempWs = Blockly.inject(tempDiv, { readOnly: false });
 
-    // append any collected hooks at the end
-    if (Blockly.Lua.hooks.length > 0) {
-      code += '\n' + Blockly.Lua.hooks.join('\n');
-    }
+    try {
+      const xml = Blockly.utils.xml.textToDom(combinedXml);
+      Blockly.Xml.domToWorkspace(xml, tempWs);
+    } catch(e) { console.error("Export load error:", e); }
+
+    Blockly.Lua.hooks = [];
+    let code = Blockly.Lua.workspaceToCode(tempWs);
+    if (Blockly.Lua.hooks.length > 0) code += '\n' + Blockly.Lua.hooks.join('\n');
+    tempWs.dispose(); tempDiv.remove();
 
     const projName = projectInput.value || "MyMod";
     const blob = new Blob([code], { type: "text/plain" });
@@ -870,14 +1057,19 @@ window.addEventListener("load", () => {
   }
 
   function previewLua() {
-    // reset hook list before generation
+    const combinedXml = getAllTabsXml();
+    const tempDiv = document.createElement('div');
+    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;visibility:hidden;';
+    document.body.appendChild(tempDiv);
+    const tempWs = Blockly.inject(tempDiv, { readOnly: false });
+    try {
+      const xml = Blockly.utils.xml.textToDom(combinedXml);
+      Blockly.Xml.domToWorkspace(xml, tempWs);
+    } catch(e) {}
     Blockly.Lua.hooks = [];
-    let code = Blockly.Lua.workspaceToCode(workspace);
-
-    // append any collected hooks at the end
-    if (Blockly.Lua.hooks.length > 0) {
-      code += '\n' + Blockly.Lua.hooks.join('\n');
-    }
+    let code = Blockly.Lua.workspaceToCode(tempWs);
+    if (Blockly.Lua.hooks.length > 0) code += '\n' + Blockly.Lua.hooks.join('\n');
+    tempWs.dispose(); tempDiv.remove();
 
     const newTab = window.open();
     newTab.document.write('<pre>' + code.replace(/</g, "&lt;").replace(/>/g, "&gt;") + '</pre>');
@@ -905,19 +1097,33 @@ window.addEventListener("load", () => {
     const authorInput = document.getElementById("projectAuthorField").value || "YourName";
     const descInput = document.getElementById("projectDescField").value || "My awesome mod";
 
+    // Build a temp workspace from all tabs
+    const combinedXml = getAllTabsXml();
+    const tempDiv = document.createElement('div');
+    tempDiv.style.cssText = 'position:absolute;left:-9999px;top:-9999px;width:1px;height:1px;visibility:hidden;';
+    document.body.appendChild(tempDiv);
+    const tempWs = Blockly.inject(tempDiv, { readOnly: false });
+    try {
+      const xml = Blockly.utils.xml.textToDom(combinedXml);
+      Blockly.Xml.domToWorkspace(xml, tempWs);
+    } catch(e) { console.error("Export load error:", e); }
+
     const zip = new JSZip();
     const folder = zip.folder(projName);
 
     // main.lua
-    folder.file("main.lua", Blockly.Lua.workspaceToCode(workspace));
+    Blockly.Lua.hooks = [];
+    let luaCode = Blockly.Lua.workspaceToCode(tempWs);
+    if (Blockly.Lua.hooks.length > 0) luaCode += '\n' + Blockly.Lua.hooks.join('\n');
+    folder.file("main.lua", luaCode);
 
     // mod.json
-    const blocks = workspace.getAllBlocks();
+    const blocks = tempWs.getAllBlocks();
+    tempWs.dispose(); tempDiv.remove();
+
     const jsonBlocks = blocks.filter(b => BLOCK_DEFS.find(d => d.type === b.type)?.json);
     const modJson = {};
-    
 
-    // fill from blocks first
     jsonBlocks.forEach(b => {
       const def = BLOCK_DEFS.find(d => d.type === b.type);
       if (!def?.jsonField) return;
@@ -926,28 +1132,19 @@ window.addEventListener("load", () => {
       if (val !== null && val !== undefined) modJson[def.jsonField] = val;
     });
 
-    // fallback to options inputs if not already set
     if (!modJson.name) modJson.name = projName;
     if (!modJson.author) modJson.author = authorInput.split(',').map(a => a.trim());
     if (!modJson.description) modJson.description = descInput;
     if (!modJson.main_file) modJson.main_file = "main.lua";
 
-    // --- auto-generate id and prefix ---
     if (!modJson.id) {
-      modJson.id = projName
-        .replace(/[^a-zA-Z0-9 ]/g, '') // remove special chars
-        .trim()
-        .replace(/\s+/g, '_')          // spaces > underscore
-        .toLowerCase();
+      modJson.id = projName.replace(/[^a-zA-Z0-9 ]/g, '').trim().replace(/\s+/g, '_').toLowerCase();
     }
     if (!modJson.prefix) {
-      modJson.prefix = projName
-        .replace(/[^a-zA-Z0-9]/g, '')  // remove non-alphanum
-        .toLowerCase();                // lowercase, no spaces
+      modJson.prefix = projName.replace(/[^a-zA-Z0-9]/g, '').toLowerCase();
     }
 
     Blockly.Lua.modPrefix = modJson.prefix;
-
     folder.file("mod.json", JSON.stringify(modJson, null, 2));
 
     zip.generateAsync({ type: "blob" }).then(blob => {
@@ -962,11 +1159,15 @@ window.addEventListener("load", () => {
   saveProjectBtn.onclick = saveProjectFile;
   loadProjectBtn.onclick = loadProjectFile;
   newProjectBtn.onclick = () => {
-    if (confirm("Start new project? This will clear the workspace.")) {
+    if (confirm("Start new project? This will clear the workspace and all tabs.")) {
       workspace.clear();
       window.customVariables = [];
       saveVariables();
-      refreshVariableDropdowns();      
+      refreshVariableDropdowns();
+      window.tabs = getDefaultTabs();
+      window.activeTabId = window.tabs[0].id;
+      persistTabs();
+      renderTabs();
       localStorage.removeItem(WORKSPACE_KEY);
       projectInput.value = "MyMod";
       saveProjectName("MyMod");
@@ -1002,10 +1203,10 @@ window.addEventListener("load", () => {
   divider.id = 'luaDivider';
   divider.style.cssText = `
     position: absolute;
-    top: 0;
+    top: 36px;
     right: 400px;
     width: 4px;
-    height: 100%;
+    height: calc(100% - 36px);
     background: #444;
     cursor: col-resize;
     user-select: none;
@@ -1090,10 +1291,7 @@ window.addEventListener("load", () => {
     const codeElement = document.querySelector('#liveLuaArea code');
     if (!codeElement) return;
 
-    codeElement.innerHTML = hljs.highlight(
-      code,
-      { language: 'lua' }
-    ).value
+    codeElement.innerHTML = hljs.highlight(code, { language: 'lua' }).value;
 
     // Highlight selected block if any
     const selected = highlightBlock ? workspace.getBlockById(highlightBlock) : null;

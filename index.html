@@ -24,12 +24,98 @@
         overflow: hidden;
         font-family: sans-serif;
       }
-      #blocklyDiv {
-        height: 100%;
-        width: 100%;
-        z-index: 0;
-        position: relative;
+      #tabBar {
+        position: absolute;
+        top: 0; left: 0; right: 0;
+        height: 36px;
+        z-index: 6;
+        display: flex;
+        align-items: center;
+        background: #e8e8e8;
+        border-bottom: 2px solid #ccc;
+        overflow-x: auto;
+        overflow-y: hidden;
+        white-space: nowrap;
+        scrollbar-width: thin;
+        scrollbar-color: #aaa transparent;
+        padding: 0 4px;
+        gap: 3px;
+        flex-shrink: 0;
       }
+      #tabBar::-webkit-scrollbar { height: 4px; }
+      #tabBar::-webkit-scrollbar-thumb { background: #aaa; border-radius: 4px; }
+
+      .tab-item {
+        display: inline-flex;
+        align-items: center;
+        gap: 4px;
+        padding: 4px 10px;
+        border-radius: 5px 5px 0 0;
+        background: #d0d0d0;
+        border: 1px solid #bbb;
+        border-bottom: none;
+        cursor: pointer;
+        font-size: 13px;
+        min-width: 60px;
+        max-width: 160px;
+        user-select: none;
+        flex-shrink: 0;
+        transition: background 0.15s;
+      }
+      .tab-item:hover { background: #c0c0c0; }
+      .tab-item.active {
+        background: #fff;
+        border-color: #aaa;
+        font-weight: bold;
+        color: #1a73e8;
+      }
+      .tab-label {
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+        flex: 1;
+      }
+      .tab-close {
+        font-size: 14px;
+        line-height: 1;
+        color: #888;
+        padding: 0 2px;
+        border-radius: 3px;
+        flex-shrink: 0;
+      }
+      .tab-close:hover { color: #e53935; background: rgba(229,57,53,0.1); }
+      #addTabBtn {
+        flex-shrink: 0;
+        background: #2196F3;
+        color: white;
+        border: none;
+        border-radius: 5px;
+        padding: 4px 10px;
+        font-size: 18px;
+        line-height: 1;
+        cursor: pointer;
+        margin-left: 4px;
+      }
+      #addTabBtn:hover { background: #1565c0; }
+
+      #blocklyDiv {
+        position: absolute;
+        top: 36px;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        width: 100%;
+        height: calc(100% - 36px);
+        z-index: 0;
+      }
+
+      /* Dark mode tab styles */
+      body.dark #tabBar { background: #1a1a1a; border-bottom-color: #444; }
+      body.dark .tab-item { background: #2a2a2a; border-color: #444; color: #ccc; }
+      body.dark .tab-item:hover { background: #333; }
+      body.dark .tab-item.active { background: #121212; color: #64b5f6; border-color: #555; }
+      body.dark #addTabBtn { background: #444; }
+      body.dark #addTabBtn:hover { background: #555; }
       #liveLuaArea {
         background: #1e1e1e;
         color: #d4d4d4;
@@ -77,7 +163,7 @@
 
       #optionsBtn {
           position: absolute;
-          top: 5px;
+          top: 41px;
           right: 5px;
           z-index: 20;
           padding: 12px 20px; 
@@ -151,6 +237,7 @@
   </style>
 </head>
 <body>
+  <div id="tabBar"></div>
   <div id="blocklyDiv"></div>
 
   <button id="optionsBtn">= Options</button>
@@ -254,10 +341,10 @@
   <pre id="liveLuaArea"
       style="display:none;
               position:absolute;
-              top:0;
+              top:36px;
               right:0;
               width:400px;
-              height:100%;
+              height:calc(100% - 36px);
               background:#111;
               margin:0;
               padding:10px;

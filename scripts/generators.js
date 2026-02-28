@@ -937,11 +937,43 @@ Blockly.Lua.forBlock['var_change'] = function(block) {
     return code;
 };
 
+// Custom generator for loc_vars: runs non-return_loc_var blocks normally,
+// then collects all return_loc_var vars into a single return at the end.
+Blockly.Lua.forBlock['loc_vars'] = function(block) {
+    const firstChild = block.getInputTargetBlock('body');
+    let regularCode = '';
+    let varItems = [];
+
+    let current = firstChild;
+    while (current) {
+        if (current.type === 'return_loc_var') {
+            const varBlock = current.getInputTargetBlock('var');
+            if (varBlock) {
+                const generated = Blockly.Lua.blockToCode(varBlock);
+                const varCode = Array.isArray(generated) ? generated[0] : generated;
+                varItems.push(varCode.replace(/\n$/, ''));
+            }
+        } else {
+            let generated = Blockly.Lua.blockToCode(current) || '';
+            if (Array.isArray(generated)) generated = generated[0];
+            regularCode += generated;
+        }
+        current = current.getNextBlock();
+    }
+
+    let body = regularCode ? indentLua(regularCode, 1) : '';
+    if (varItems.length > 0) {
+        body += '    return { vars = { ' + varItems.join(', ') + ', } }\n';
+    }
+
+    return `loc_vars = function(self, info_queue, card)\n${body}end,\n`;
+};
+
+// Skip types that already have a hand-written custom generator above
 BLOCK_DEFS.forEach(def => {
-    if (def.lua) {
+    if (def.lua && !Blockly.Lua.forBlock[def.type]) {
         Blockly.Lua.forBlock[def.type] = function (block) {
             return genLuaFromTemplate(def.lua, block);
         };
     }
 });
-
