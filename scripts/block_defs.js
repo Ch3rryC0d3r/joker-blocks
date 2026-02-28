@@ -166,7 +166,6 @@ function ConditionBlocks() {
                     ]
                 }
             ],
-            tooltip: 'Check for various context checks.'
             tooltip: 'Check for various context checks.',
             dynamic_tooltip: [
                 { option: 'Card Repetition', tooltip: 'Check for various context checks. `Card Repetition` is true when a card is being repeated (e.g. Sock and Buskin). Combine with a Card Area check to narrow it down.' },
