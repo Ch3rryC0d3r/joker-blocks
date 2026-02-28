@@ -351,7 +351,7 @@ function LogicBlocks() {
             output: 'Boolean',
             valueInputs: [
                 { name: 'left', label: '', check: 'Boolean' },
-                { name: 'right', label: 'or', check: 'Boolean' }
+                { name: 'right', label: 'or', chfeck: 'Boolean' }
             ],
             tooltip: 'At least one condition must be true'
         },
@@ -941,12 +941,12 @@ function GeneralBlocks() {
         },
         {
             type: 'loc_vars',
-            title: 'Local Variables',
+            title: 'Localization Variables',
             category: 'General',
             color: '#3B4252',
             lua: 'loc_vars = function(self, info_queue, card)\n    return { vars = { [[body]] } }\nend,\n',
             statementInput: 'body',
-            tooltip: 'Local variables for an object. Use the `Return variable` block inside this.'
+            tooltip: 'Localization variables for an object. Use the `Return variable` block inside this.'
         },
         {
             type: 'return_loc_var',
@@ -954,7 +954,7 @@ function GeneralBlocks() {
             category: 'General',
             color: '#D67C7C',
             lua: '[[var]], ',
-            tooltip: 'Placed in the `Local Variables` block',
+            tooltip: 'Placed in the `Localization Variables` block',
             valueInputs: [
                 { name: 'var', label: '', check: null }
             ],
