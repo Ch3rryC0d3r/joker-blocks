@@ -57,6 +57,11 @@
 
 // load vars from localStorage
 window.customVariables = JSON.parse(localStorage.getItem("customVariables") || "[]");
+
+// Balatro built-in variable names
+const BALATRO_RESERVED_VARS = [
+  "hands"
+];
 window.defaultVarScope = localStorage.getItem("jokerblocks_default_var_scope") || "global"; // Make this global
 
 // save to localStorage
@@ -108,6 +113,14 @@ function createNewVariablePopup(onDone) {
   box.querySelector('#okBtn').onclick = () => {
     const name = input.value.trim();
     if (name && !window.customVariables.includes(name)) {
+      if (BALATRO_RESERVED_VARS.includes(name) && window.defaultVarScope === 'global') {
+        const proceed = confirm(
+          `⚠️ Warning: "${name}" already exists in Balatro.\n\n` +
+          `Modifying or resetting this variable could result in crashes.\n\n` +
+          `Only continue if you know what you're doing.\n\nAdd it anyway?`
+        );
+        if (!proceed) return;
+      }
       window.customVariables.push(name);
       
       // Apply the default scope to new variables
@@ -697,9 +710,22 @@ window.addEventListener("load", () => {
       scopeDropdown.value = currentScope;
       
       scopeDropdown.onchange = () => {
-        window.variableScopes[v] = scopeDropdown.value;
+        const newScope = scopeDropdown.value;
+        if (newScope === 'global' && BALATRO_RESERVED_VARS.includes(v)) {
+          const proceed = confirm(
+            `⚠️ Warning: "${v}" already exists in Balatro.\n\n` +
+            `Setting it to Global scope could result in crashes.\n\n` +
+            `Only continue if you know what you're doing.\n\nSwitch to Global anyway?`
+          );
+          if (!proceed) {
+            scopeDropdown.value = window.variableScopes[v] || 'local'; // revert dropdown
+            return;
+          }
+        }
+        window.variableScopes[v] = newScope;
         saveVariableScopes();
         refreshVariableDropdowns();
+        renderVarList();
       };
       
       // Delete button
@@ -739,13 +765,21 @@ window.addEventListener("load", () => {
       alert('That variable already exists.');
       return;
     }
+    if (BALATRO_RESERVED_VARS.includes(name) && window.defaultVarScope === 'global') {
+      const proceed = confirm(
+        `⚠️ Warning: "${name}" already exists in Balatro.\n\n` +
+        `Modifying or resetting this variable could result in crashes.\n\n` +
+        `Only continue if you know what you're doing.\n\nAdd it anyway?`
+      );
+      if (!proceed) return;
+    }
     window.customVariables.push(name);
     
     // Apply the default scope to new variables
     if (!window.variableScopes) {
       window.variableScopes = {};
     }
-    window.variableScopes[name] = defaultVarScope;
+    window.variableScopes[name] = window.defaultVarScope;
     
     newVarName.value = '';
     refreshVariableDropdowns();
