@@ -81,6 +81,7 @@ function ConditionBlocks() {
                     options: [
                         ['Joker\'s turn', 'joker\'s turn'],
                         ['Before Joker\'s turn', 'before joker\'s turn'],
+                        ['Other Joker\'s turn', 'other joker\'s turn'],
                         ['After Joker\'s turn', 'after joker\'s turn'],
                     ]
                 }
@@ -160,10 +161,28 @@ function ConditionBlocks() {
                         ['Affecting a Playing Card','context.individual'],
                         ['Skipping Booster Pack','context.skipping_booster'],
                         ['Using Consumable','context.using_consumeable'],
+                        ['Final Scoring Step','context.final_scoring_step'],
+                        ['Press Play','context.press_play'],
                     ]
                 }
             ],
             tooltip: 'Check for various context checks.'
+            tooltip: 'Check for various context checks.',
+            dynamic_tooltip: [
+                { option: 'Card Repetition', tooltip: 'Check for various context checks. `Card Repetition` is true when a card is being repeated (e.g. Sock and Buskin). Combine with a Card Area check to narrow it down.' },
+                { option: 'Modifying Chances', tooltip: 'Check for various context checks. `Modifying Chances` is true during the chance-modification phase — use with Set Numerator/Denominator blocks (like Oops! All 6s).' },
+                { option: 'Not Blueprint', tooltip: 'Check for various context checks. `Not Blueprint` is true when this joker is NOT being copied by Blueprint or Brainstorm. Prevents double-triggering.' },
+                { option: 'Pre-Discard', tooltip: 'Check for various context checks. `Pre-Discard` is true just before the player discards — fires before cards are removed from hand.' },
+                { option: 'Discard', tooltip: 'Check for various context checks. `Discard` is true while the player is discarding cards.' },
+                { option: 'Card Area = Jokers', tooltip: 'Check for various context checks. `Card Area = Jokers` is true when the active card area is the joker row (G.jokers).' },
+                { option: 'Card Area = Play', tooltip: 'Check for various context checks. `Card Area = Play` is true when the active card area is the played hand (G.play).' },
+                { option: 'Card Area = Hand', tooltip: 'Check for various context checks. `Card Area = Hand` is true when the active card area is the held-in-hand area (G.hand).' },
+                { option: 'Affecting a Playing Card', tooltip: 'Check for various context checks. `Affecting a Playing Card` is true when scoring is evaluating an individual playing card. Combine with Card Area = Play for per-card scoring.' },
+                { option: 'Skipping Booster Pack', tooltip: 'Check for various context checks. `Skipping Booster Pack` is true when the player skips a booster pack opening.' },
+                { option: 'Using Consumable', tooltip: 'Check for various context checks. `Using Consumable` is true when the player uses a consumable (Tarot, Planet, Spectral, etc.).' },
+				{ option: 'Final Scoring Step', tooltip: 'Check for various context checks. `Final Scoring Step` is used for any effects after cards have been calculated but before the score is totalled.' },
+				{ option: 'Press Play', tooltip: 'Check for various context checks. `Press Play` is true when the Play Hand button is clicked' },
+            ]
         },       
         {
             type: 'cards_stuff',
@@ -542,9 +561,32 @@ function LogicBlocks() {
                         ['Chance Denominator','context.denominator'],
 						['# of Cards in Full Deck','#G.playing_cards'],
 						['# of card effects','#context.card_effects'],
+						['Joker card limit','G.jokers.config.card_limit'],
+						['Joker buffer','G.GAME.joker_buffer'],
+						['Hands played','G.GAME.hands_played'],
                     ]
                 }
-            ]
+            ],
+			dynamic_tooltip: [
+				{ option: 'Round', tooltip: 'Gets various game state values. `Round` holds the current round number.' },
+				{ option: 'Dollars', tooltip: 'Gets various game state values. `Dollars` is the current money amount.' },
+				{ option: 'Current Chips', tooltip: 'Gets various game state values. `Current Chips` is the current chips.' },
+				{ option: 'Current Mult', tooltip: 'Gets various game state values. `Current Mult` is the current mult.' },
+				{ option: 'Unused Discards', tooltip: 'Gets various game state values. `Unused Discards` counts unused discards.' },
+				{ option: 'Discards Left', tooltip: 'Gets various game state values. `Discards Left` holds the discards remaining for the current round.' },
+				{ option: 'Hands Left', tooltip: 'Gets various game state values. `Hands Left` holds the hands remaining for the current round.' },
+				{ option: '(Amount of) Cards in Play', tooltip: 'Gets various game state values. `(Amount of) Cards in Play` is the amount of cards currently in play.' },
+				{ option: '(Amount of) Cards in Hand', tooltip: 'Gets various game state values. `(Amount of) Cards in Hand` is the amount of cards currently in hand.' },
+				{ option: 'Empty Joker Slots', tooltip: 'Gets various game state values. `Empty Joker Slots` is the amount of joker slots that are empty (calculated by doing limit-current).' },
+				{ option: 'Maximum Bankruptcy', tooltip: 'Gets various game state values. `Maximum Bankruptcy` is set to -20 by Credit Card.' },
+				{ option: 'Chance Numerator', tooltip: 'Gets various game state values. `Chance Numerator` is the numerator in chances (>1< in 2)' },
+				{ option: 'Chance Denominator', tooltip: 'Gets various game state values. `Chance Denominator` is the numerator in chances (1 in >2<)' },
+				{ option: '# of Cards in Full Deck', tooltip: 'Gets various game state values. `# of Cards in Full Deck` current number of cards in your full deck' },
+				{ option: '# of card effects', tooltip: 'Gets various game state values. `# of card effects` this is the count of a table of effects that has been calculated during Main Scoring (`context.main_scoring`)' },
+				{ option: 'Joker card limit', tooltip: 'Gets various game state values. `Joker card limit` is the current limit of Jokers you can hold' },
+				{ option: 'Joker buffer', tooltip: 'Gets various game state values. `Joker buffer` is used during calculation by Riff-Raff to prevent too many jokers from being spawned.' },
+				{ option: 'Hands played', tooltip: 'Gets various game state values. `Hands played` counts played hands' },
+			]
         },
         {
             type: 'joker_amt',
@@ -901,13 +943,10 @@ function GeneralBlocks() {
         },     
         {
             type: 'return',
-            title: 'Return',
+            title: '',
             category: 'General',
             color: '#b8cf72',//#3a2a6b 
             lua: 'return [[return]]',
-            valueInputs: [
-                { name: 'return', label: '', check: null }
-            ],
             tooltip: 'Returns a value'
         },
         {
@@ -1055,6 +1094,20 @@ function GeneralBlocks() {
             lua: 'G.GAME.blind:disable()'
         },
         {
+            type: 'debuff_card',
+            title: 'Debuff: ',
+            category: 'General',
+			inlineInputs: true,
+            color: '#98556c',
+			lua: 'SMODS.debuff_card([[card]],[[debuff]],[[source]])',
+            valueInputs: [
+                { name: 'card', label: 'Card' },
+                { name: 'debuff', label: 'Debuff' },
+                { name: 'source', label: 'Source' }
+            ],
+            tooltip: 'Debuffs a card. If debuff is true: debuff the card, If debuff is false: remove any debuff from the card. Source should be a unique identifier string (use single quotes (\') or the `tostring` block). You must use the same source to remove a previously set debuff.',
+        },
+        {
             type: 'atlaskey',
             title: 'Atlas',
             category: 'General',
@@ -1158,6 +1211,13 @@ function GeneralBlocks() {
             lua: '[[var]] = [[val]]',
             tooltip: 'Sets various game values.',
         },                                                               
+        {
+            type: 'draw_cards',
+            title: '',
+            category: 'General',
+            color: '#4079aa',
+			lua: 'SMODS.draw_cards([[num]])',
+        },		
   ];
 }
 
@@ -1209,28 +1269,15 @@ function CreationBlocks() {
             nextStatement: 'CreationFunction',
         },
         {
-            type: 'legendary',
+            type: 'rarity_set',
             title: '',
             category: 'Creation',
             color: '#83b735',
-            lua: 'legendary = [[a]],\n',
+            lua: 'rarity = "s[[a]]",\n',
             fields: [
-                { name: 'a', label: 'Legendary?', type: 'dropdown', options: ['false', 'true'], default: 'false' }
+                { name: 'a', label: 'Rarity', type: 'dropdown', options: ['Common','Uncommon','Rare','Legendary'], default: 'false' }
             ],
             tooltip: 'If true, generates a card of Legendary rarity.',
-            previousStatement: 'CreationFunction',
-            nextStatement: 'CreationFunction',
-        },
-        {
-            type: 'rarity',
-            title: '',
-            category: 'Creation',
-            color: '#83b735',
-            lua: 'rarity = [[a]],\n',
-            fields: [
-                { name: 'a', label: 'Rarity Value (0-1)', type: 'text', default: '0.5' }
-            ],
-            tooltip: 'If specified, overrides rarity polling. Values up to 0.7=Common, 0.95=Uncommon, above=Rare.',
             previousStatement: 'CreationFunction',
             nextStatement: 'CreationFunction',
         },

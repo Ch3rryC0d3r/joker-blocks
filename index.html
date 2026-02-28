@@ -234,6 +234,25 @@
         border: 1px solid #444;
       }
 
+      /* Scrollable Blockly dropdowns */
+      .blocklyDropDownDiv .blocklyMenu {
+        max-height: 300px;
+        overflow-y: auto;
+        overflow-x: hidden;
+        scrollbar-width: thin;
+        scrollbar-color: #888 transparent;
+      }
+      .blocklyDropDownDiv .blocklyMenu::-webkit-scrollbar {
+        width: 6px;
+      }
+      .blocklyDropDownDiv .blocklyMenu::-webkit-scrollbar-thumb {
+        background: #888;
+        border-radius: 4px;
+      }
+      .blocklyDropDownDiv .blocklyMenu::-webkit-scrollbar-thumb:hover {
+        background: #aaa;
+      }
+
   </style>
 </head>
 <body>

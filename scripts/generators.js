@@ -553,6 +553,8 @@ Blockly.Lua.forBlock['joker_conditions'] = function(block) {
             return ['context.pre_joker', Blockly.Lua.ORDER_ATOMIC];
         case "after joker's turn":
             return ['context.post_joker', Blockly.Lua.ORDER_ATOMIC];
+        case "other joker's turn":
+            return ['context.other_joker', Blockly.Lua.ORDER_ATOMIC];
         case "card trigger":
             return ['context.repetition and context.cardarea == G.hand and (next(context.card_effects[1]) or #context.card_effects > 1)', Blockly.Lua.ORDER_ATOMIC];
         default:
@@ -937,8 +939,8 @@ Blockly.Lua.forBlock['var_change'] = function(block) {
     return code;
 };
 
-// Custom generator for loc_vars: runs non-return_loc_var blocks normally,
-// then collects all return_loc_var vars into a single return at the end.
+// Custom generator for loc_vars: separates regular blocks from return_loc_var blocks,
+// runs regular code first, then emits a single merged return { vars = { ... } } at the end.
 Blockly.Lua.forBlock['loc_vars'] = function(block) {
     const firstChild = block.getInputTargetBlock('body');
     let regularCode = '';
@@ -967,6 +969,47 @@ Blockly.Lua.forBlock['loc_vars'] = function(block) {
     }
 
     return `loc_vars = function(self, info_queue, card)\n${body}end,\n`;
+};
+
+// mod_numerator and mod_denominator: when both are present as siblings, merge into one return.
+// Numerator peeks ahead, if next sibling is denominator, emit both together.
+// Denominator peeks back, if previous sibling was numerator, it already handled us, so emit nothing.
+Blockly.Lua.forBlock['mod_numerator'] = function(block) {
+    const valBlock = block.getInputTargetBlock('val');
+    let numCode = '0';
+    if (valBlock) {
+        const generated = Blockly.Lua.blockToCode(valBlock);
+        numCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+    }
+
+    const next = block.getNextBlock();
+    if (next && next.type === 'mod_denominator') {
+        const denValBlock = next.getInputTargetBlock('val');
+        let denCode = '0';
+        if (denValBlock) {
+            const generated = Blockly.Lua.blockToCode(denValBlock);
+            denCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+        }
+        return `return {\n    numerator = ${numCode},\n    denominator = ${denCode}\n}\n`;
+    }
+
+    return `return {\n    numerator = ${numCode}\n}\n`;
+};
+
+Blockly.Lua.forBlock['mod_denominator'] = function(block) {
+    const prev = block.getPreviousBlock();
+    if (prev && prev.type === 'mod_numerator') {
+        return ''; // already emitted by mod_numerator
+    }
+
+    const valBlock = block.getInputTargetBlock('val');
+    let denCode = '0';
+    if (valBlock) {
+        const generated = Blockly.Lua.blockToCode(valBlock);
+        denCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+    }
+
+    return `return {\n    denominator = ${denCode}\n}\n`;
 };
 
 // Skip types that already have a hand-written custom generator above

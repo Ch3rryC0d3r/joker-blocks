@@ -640,6 +640,37 @@ Blockly.Blocks['card_amt'].init = function() {
   this.setTooltip('Calculates how many jokers of the given `id` is currently held.');
 };
 
+Blockly.Blocks['return'].init = function() {
+  this.setColour('#b8cf72');
+  
+  this.appendDummyInput()
+      .appendField('Return')
+	  
+  this.appendValueInput('return')
+      .setCheck(null) 
+	  
+  this.setInputsInline(true);
+  this.setPreviousStatement(true, null);
+};
+
+Blockly.Blocks['draw_cards'].init = function() {
+  this.setColour('#4079aa');
+
+  this.appendDummyInput()
+      .appendField('Draw')
+
+  this.appendValueInput('num')
+      .setCheck(null)      
+
+  this.appendDummyInput()
+      .appendField('cards')
+
+  this.setPreviousStatement(true, null);
+  this.setNextStatement(true, null);
+  this.setInputsInline(true);
+  this.setTooltip('Draws the specified amount of cards to hand');
+};
+
 Blockly.Blocks['cards_stuff'].init = function() {
   this.setColour('#4079aa');
   this.setOutput(true, 'Object');
