@@ -130,9 +130,10 @@ function ConditionBlocks() {
                         ['Shop rerolled','shop rerolled'],
                         ['Before total score', 'before total score'],
                         ['Before scoring', 'before scoring'],
-                        ['Scoring', 'scoring'],
+                        //['Scoring', 'scoring'],
                         ['First hand drawn','first hand drawn'],
                         ['Skipping blind','skipping blind'],
+                        ['Main Eval','context.main_eval'],
                     ]
                 }
             ]
@@ -163,6 +164,7 @@ function ConditionBlocks() {
                         ['Using Consumable','context.using_consumeable'],
                         ['Final Scoring Step','context.final_scoring_step'],
                         ['Press Play','context.press_play'],
+						['Modifying Scoring Hand','context.modify_scoring_hand'],
                     ]
                 }
             ],
@@ -181,6 +183,7 @@ function ConditionBlocks() {
                 { option: 'Using Consumable', tooltip: 'Check for various context checks. `Using Consumable` is true when the player uses a consumable (Tarot, Planet, Spectral, etc.).' },
 				{ option: 'Final Scoring Step', tooltip: 'Check for various context checks. `Final Scoring Step` is used for any effects after cards have been calculated but before the score is totalled.' },
 				{ option: 'Press Play', tooltip: 'Check for various context checks. `Press Play` is true when the Play Hand button is clicked' },
+				{ option: 'Modifying Scoring Hand', tooltip: 'Check for various context checks. `Modifying Scoring Hand` is used by Splash, use `Add To Hand [true]` to replicate Splash.' },
             ]
         },       
         {
@@ -244,7 +247,7 @@ function ConditionBlocks() {
             title: 'is debuffed?',
             category: 'Conditions',
             color: '#725cb8',
-            lua: '[[card]].debuffed',
+            lua: '[[card]].debuff',
             output: 'Boolean',
             tooltip: 'Whether or not a playing card is debuffed'
         },       
@@ -369,7 +372,7 @@ function LogicBlocks() {
             output: 'Boolean',
             valueInputs: [
                 { name: 'left', label: '', check: 'Boolean' },
-                { name: 'right', label: 'or', chfeck: 'Boolean' }
+                { name: 'right', label: 'or', check: 'Boolean' }
             ],
             tooltip: 'At least one condition must be true'
         },
@@ -407,6 +410,21 @@ function LogicBlocks() {
             output: 'Number',
             tooltip: 'Compares two values (A == B).'
         },   
+        {
+            type: 'set_some_value',
+            title: 'Set',
+            category: 'Logic',
+			inlineInputs: true,
+			lua: '[[left]] = [[right]]',
+            color: '#5cb85c',
+			nextStatement: true,
+			previousStatement: true,
+            tooltip: 'Sets a misc. value to some other value',
+            valueInputs: [
+                { name: 'left', label: '', check: null },
+                { name: 'right', label: '=', check: null }
+            ],
+        },
         {
             type: 'string_length',
             title: 'length of',
@@ -561,8 +579,16 @@ function LogicBlocks() {
 						['# of Cards in Full Deck','#G.playing_cards'],
 						['# of card effects','#context.card_effects'],
 						['Joker card limit','G.jokers.config.card_limit'],
+						['Consumable card limit','G.consumeables.config.card_limit'],
 						['Joker buffer','G.GAME.joker_buffer'],
+						['Consumable buffer','G.GAME.consumeable_buffer'],
 						['Hands played','G.GAME.hands_played'],
+						['Discards used','G.GAME.current_round.discards_used'],
+						['Gros Michel extinct flag','G.GAME.pool_flags.vremade_gros_michel_extinct'],
+						['Times hand was played','G.GAME.hands[context.scoring_name].played'],
+						['Times hand was played this round','G.GAME.hands[context.scoring_name].played_this_round'],
+						['Used Consumable Set','context.consumeable.ability.set'],
+						['Scoring Name','context.scoring_name'],
                     ]
                 }
             ],
@@ -583,8 +609,16 @@ function LogicBlocks() {
 				{ option: '# of Cards in Full Deck', tooltip: 'Gets various game state values. `# of Cards in Full Deck` current number of cards in your full deck' },
 				{ option: '# of card effects', tooltip: 'Gets various game state values. `# of card effects` this is the count of a table of effects that has been calculated during Main Scoring (`context.main_scoring`)' },
 				{ option: 'Joker card limit', tooltip: 'Gets various game state values. `Joker card limit` is the current limit of Jokers you can hold' },
+				{ option: 'Consumable card limit', tooltip: 'Gets various game state values. `Consumable card limit` is the current limit of Consumables you can hold' },
 				{ option: 'Joker buffer', tooltip: 'Gets various game state values. `Joker buffer` is used during calculation by Riff-Raff to prevent too many jokers from being spawned.' },
+				{ option: 'Consumable buffer', tooltip: 'Gets various game state values. `Consumable buffer` is used by Superposition to prevent too many consumables from being spawned. ' },
 				{ option: 'Hands played', tooltip: 'Gets various game state values. `Hands played` counts played hands' },
+				{ option: 'Discards Used', tooltip: 'Gets various game state values. `Discards Used` is used by Delayed Gratification to count how many discards were used.' },
+				{ option: 'Gros Michel extinct flag', tooltip: 'Gets various game state values. `Gros Michel extinct flag` is set to `true` by Gros Michel after it goes extinct to flag that. Afterwards Cavendish can now spawn because it checks that flag' },
+				{ option: 'Times Hand was Played', tooltip: 'Gets various game state values. `Times Hand was Played` is the number of times this poker hand has been played' },
+				{ option: 'Times hand was played this round', tooltip: 'Gets various game state values. `Times hand was played this round` is the number of times this poker hand has been played this round' },
+				{ option: 'Used Consumable Set', tooltip: 'Gets various game state values. `Used Consumable Set` is the set (Planet/Tarot/etc) of the consumable that has just been used (after `Used Consumable` context) If you\'re comparing, you can use the `Set` block or directly type it (AS A STRING)' },
+				{ option: 'Scoring Name', tooltip: 'Gets various game state values. `Scoring Name` is the name of the poker hand that was played, this can also be used by itself to check if you\'re in scoring' },
 			]
         },
         {
@@ -652,6 +686,16 @@ function LogicBlocks() {
             color: '#4079aa',
         },        
         {
+            type: 'random_prob',
+            category: 'Values',
+            color: '#4079aa',
+        },
+        {
+            type: 'get_prob_vars',
+            category: 'Values',
+            color: '#4079aa',
+        },
+        {
             type: 'rand_suit',
             title: 'Random Suit',
             category: 'Values',
@@ -666,12 +710,12 @@ function LogicBlocks() {
             end
         end
         if valid_suitvar_cards[1] then
-            local suitvar_card = pseudorandom_element(valid_suitvar_cards, pseudoseed('suitvar' .. G.GAME.round_resets.ante))
+            local suitvar_card = pseudorandom_element(valid_suitvar_cards, "joker_blocks")
             return suitvar_card
         end
     end
 end)()`,
-            tooltip: 'Returns a valid random suit ("valid" meaning "in your deck")'
+            tooltip: 'Returns a valid random suit (preset seed)'
         },      
         {
             type: 'rand_rank',
@@ -688,13 +732,29 @@ end)()`,
             end
         end
         if valid_rankvar_cards[1] then
-            local rankvar_card = pseudorandom_element(valid_rankvar_cards, pseudoseed('rankvar' .. G.GAME.round_resets.ante))
+            local rankvar_card = pseudorandom_element(valid_rankvar_cards, "joker_blocks")
             return rankvar_card
         end
     end
 end)()`,
-            tooltip: 'Returns a valid random rank ("valid" meaning "in your deck")',
-        },                  
+            tooltip: 'Returns a valid random rank (preset seed)',
+        },    
+        {
+            type: 'rand_poker_hand',
+            title: 'Random Poker Hand',
+            category: 'Values',
+            color: '#4079aa',
+            output: 'Hand',
+            lua: `(function()
+local _poker_hands = {}
+for handname, _ in pairs(G.GAME.hands) do
+    if SMODS.is_poker_hand_visible(handname) and handname ~= card.ability.extra.poker_hand then
+        _poker_hands[#_poker_hands + 1] = handname
+    end
+end
+return pseudorandom_element(_poker_hands, "joker_blocks"))()`,
+            tooltip: 'Returns a random poker hand.',
+        },
         {
             type: 'sc_card',
             title: 'Currently scoring card',
@@ -760,6 +820,39 @@ end)()`,
             ]
         },                                      
         {
+            type: 'set_return',
+            title: '',
+            category: 'Values',
+            color: '#4079aa',
+            lua: '[[set]]',
+            output: 'Set',
+            tooltip: 'Returns a consumable set.',
+            fields: [
+                { name: 'set', label: 'Set', type: 'dropdown', options: [
+                    [`Planet`,`'Planet'`],
+                    [`Spectral`,`'Spectral'`],
+                    [`Tarot`,`'Tarot'`],                                                        
+                ]
+            }
+            ]
+        },
+        {
+            type: 'card_ability_get',
+            title: '',
+            category: 'Values',
+            color: '#4079aa',
+            lua: '[[card]].ability.[[ability]]',
+            output: 'Set',
+			inlineInputs: true,
+            tooltip: 'Gets an ability (like a variable) of a card',
+            valueInputs: [
+                { name: 'card', label: 'Get Card', check: 'Object' }
+            ],
+            fields: [
+                { name: 'ability', label: 'Ability', type: 'dropdown', options: [['Perm. Chip Bonus','perma_bonus']] }
+            ]
+        },
+        {
             type: 'limit',
             title: 'Limit',
             category: 'Values',
@@ -784,7 +877,7 @@ end)()`,
                 { name: 'v', label: 'value of', check: 'Object' }
             ],
             fields: [
-              { name: 't', label: 'Get', type: 'dropdown', options: [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set']] },
+              { name: 't', label: 'Get', type: 'dropdown', options: [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set'],['Extra Sell Value', 'card.ability.extra_value']] },
             ],
             lua: '[[v]].[[t]]',
             tooltip: 'Gets a property of a card (i.e. Sell value of a joker)'
@@ -817,6 +910,30 @@ end)()`,
             lua: '[[table]][[[index]]]',
             tooltip: 'Gets the selected index of the provided table'
         },
+        /*{
+            type: 'left_parenthesis',
+            title: '',
+            inlineInputs: true,
+            category: 'Logic',
+            color: '#5cb85c',
+            output: 'Boolean',
+            valueInputs: [
+                { name: 'input', label: '(' },
+            ],
+            tooltip: 'Generates a left parenthesis `(`'
+        },
+        {
+            type: 'right_parenthesis',
+            title: '',
+            inlineInputs: true,
+            category: 'Logic',
+            color: '#5cb85c',
+            output: 'Boolean',
+            valueInputs: [
+                { name: 'input', label: ')' },
+            ],
+            tooltip: 'Generates a right parenthesis `)`'
+        },*/	
     ]
 }
 
@@ -945,7 +1062,7 @@ function GeneralBlocks() {
             title: '',
             category: 'General',
             color: '#b8cf72',//#3a2a6b 
-            lua: 'return [[return]]',
+            lua: 'return [[return]]\n',
             tooltip: 'Returns a value'
         },
         {
@@ -953,7 +1070,7 @@ function GeneralBlocks() {
             title: 'Comment',
             category: 'General',
             color: '#ff9d4c',
-            lua: '-- [[comment]]',
+            lua: '-- [[comment]]\n',
             fields: [
                 { name: 'comment', label: '', type: 'text' }
             ],
@@ -1021,25 +1138,92 @@ function GeneralBlocks() {
         },
         {
             type: 'get_from_config',
-            title: 'Get extra config: ',
+            title: 'Get variable from extra config: ',
 			inlineInputs: true,
+			//fieldsFirst: true,
             category: 'General',
             color: '#D6A77C',
 			output: 'String',
             lua: 'card.ability.extra.[[name]]',
             tooltip: 'Gets a variable from extra config (`card.ability.extra.NAME`)',
+            /*fields: [
+              { name: 'prefix', label: '', type: 'dropdown', options: [["Extra Config",".extra."]] },
+            ],*/
             valueInputs: [
-                { name: 'name', label: 'Name', check: null },			
+                { name: 'name', label: 'Name: ', check: null },			
             ],
-        },		
+        },
+        {
+            type: 'set_cardability',
+            title: 'Set card variable: ',
+			inlineInputs: true,
+			nextStatement: true,
+			fieldsFirst: true,
+			previousStatement: true,
+            category: 'General',
+            color: '#A87349',
+            lua: 'card.ability.[[var]] = [[value]]\n',
+            tooltip: 'Sets a variable from this card (i.e. extra sell value)',
+            fields: [
+              { name: 'var', label: '', type: 'dropdown', options: [["Extra Sell Value","extra_value"]] },
+            ],			
+            valueInputs: [
+                { name: 'value', label: 'to value: ', check: null },
+            ],
+        },
+        {
+            type: 'get_cardability',
+            title: 'Get card variable: ',
+			inlineInputs: true,
+			fieldsFirst: true,
+			output: 'Number',
+            category: 'General',
+            color: '#A87349',
+            lua: 'card.ability.[[var]]',
+            tooltip: 'Gets a variable from this card (i.e. extra sell value)',
+            fields: [
+              { name: 'var', label: '', type: 'dropdown', options: [["Extra Sell Value","extra_value"]] },
+            ],
+        },
+        {
+            type: 'card_set_cost',
+            title: 'Set Card Cost',
+			inlineInputs: true,
+			nextStatement: true,
+			fieldsFirst: true,
+			previousStatement: true,
+            category: 'General',
+            color: '#A87349',
+            lua: 'card:set_cost()',
+            tooltip: 'Used by Egg, this should be used right after changing Extra Sell Value.',
+        },
         {
             type: 'change',
             title: '',
             category: 'Game Values',
             color: '#26aa96',
+			fieldsFirst: true,
+            valueInputs: [
+                { 
+					name: 'v', 
+					label: 'by',
+					check: null
+				},
+            ],
             fields: [
-              { name: 't', label: 'Change', type: 'dropdown', options: ["Ante", "Dollars","Temp. Discards","Temp. Hands","Hand Size","Hands","Discards"] },
-              { name: 'v', label: 'by', type: 'text', default: 1 },
+              { name: 't', 
+			    label: 'Change', 
+				type: 'dropdown',
+				options: [
+					"Ante", 
+					"Dollars",
+					"Temp. Discards",
+					"Temp. Hands",
+					"Hand Size",
+					"Perm. Hands",
+					"Perm. Discards"
+				]
+			  },
             ],
             tooltip: 'Changes a game variable by a specified value.'
         },       
@@ -1049,7 +1233,7 @@ function GeneralBlocks() {
             category: 'Scoring',
             color: '#c47c2a',
             fields: [
-                { name: 'var', label: '', type: 'dropdown', options: ['Mult','Chips','XChips','XMult','Dollars','Message']  }
+                { name: 'var', label: '', type: 'dropdown', options: ['Mult','Chips','XChips','XMult','Dollars','Message','Colour']  }
             ],            
             valueInputs: [
                 { name: 'amt', label: 'Add', check: null }
@@ -1060,11 +1244,41 @@ function GeneralBlocks() {
             nextStatement: 'BlindFunction',
         },     
         {
+            type: 'add_to_hand',
+            title: 'Add To Hand',
+            category: 'Scoring',
+            color: '#c47c2a',
+            fields: [
+                { name: 'v', label: '', type: 'dropdown', options: ['true','false']  }
+            ],   
+			lua: 'add_to_hand = [[v]]',
+            tooltip: 'Use in `Modifying Scoring Hand` context, returns `add_to_hand = SELECTED`',
+            previousStatement: 'BlindFunction',
+            nextStatement: 'BlindFunction',
+        },
+        {
+            type: 'set_enhancement',
+            title: 'Set enhancement of',
+            category: 'Scoring',
+            color: '#c47c2a',
+			valueInputs: [
+                { name: 'card', label: 'card' }
+			],
+            fields: [
+                { name: 'enhancement', label: 'to enhancement', type: 'dropdown', options: [['Base','c_base'],['Gold','m_gold'],['Steel','m_steel'],['Wild','m_wild'],['Mult','m_mult'],['Chips','m_chips'],['Glass','m_glass'],['Lucky','m_lucky'],['Stone','m_stone']]  }
+            ],   
+			lua: '[[card]]:set_ability("[[enhancement]]")',
+            tooltip: 'Sets the enhancement of a card to a different enhancement',
+            previousStatement: true,
+            nextStatement: true,
+			inlineInputs: true,
+        },
+        {
             type: 'create',
             title: 'Add Card',
             category: 'Cards',
             color: '#78944e',
-            lua: 'SMODS.add_card({[[body]]\n})',
+            lua: 'SMODS.add_card({[[body]]\n})\n',
             nextStatement: 'BlindFunction',
             statementInput: 'body',
             tooltip: 'Generates a new card with the specified properties. Use Creation blocks inside to define its details.'
@@ -1150,13 +1364,30 @@ function GeneralBlocks() {
         {
             type: 'change_sfreq', // sfreq = straight/flush requirement
             title: 'Change Straight/Flush Req.',
-            category: 'Game Values',
-            color: '#26aa96',
+            category: 'Hooks',
+            color: '#a18de5',
             fields: [
                 { name: 'a', label: 'to', type: 'text', default: '4' },
-                { name: 'id', label: 'when card id', type: 'text', default: 'myJoker' }
-            ],
-            tooltip: 'Changes the minimum number of cards required to make Straights/Flushes when a card with the given id is present. This block can be put anywhere, it doesn\'t change anything'
+                { name: 'id', label: 'when joker id', type: 'text', default: 'myJoker' }
+            ]
+		},
+        {
+            type: 'accfc', // accfc = All Cards are Considered Face Cards
+            title: 'All Cards == Face Cards',
+            category: 'Hooks',
+            color: '#a18de5',
+            fields: [
+                { name: 'id', label: 'when joker id', type: 'text', default: 'myJoker' }
+            ]
+        },
+        {
+            type: 'hooks_shortcut',
+            title: 'Allow Straights to be made with gaps of 1 rank',
+            category: 'Hooks',
+            color: '#a18de5',
+            fields: [
+                { name: 'id', label: 'when joker id', type: 'text', default: 'myJoker' }
+            ]
         },
         {
             type: 'repeater',
@@ -1207,7 +1438,7 @@ function GeneralBlocks() {
             title: 'Set Game Value',
             category: 'Game Values',
             color: '#26aa96',
-            lua: '[[var]] = [[val]]',
+            lua: '[[var]] = [[val]]\n',
             tooltip: 'Sets various game values.',
         },                                                               
         {
@@ -1272,7 +1503,7 @@ function CreationBlocks() {
             title: '',
             category: 'Creation',
             color: '#83b735',
-            lua: 'rarity = "s[[a]]",\n',
+            lua: 'rarity = "[[a]]",\n',
             fields: [
                 { name: 'a', label: 'Rarity', type: 'dropdown', options: ['Common','Uncommon','Rare','Legendary'], default: 'false' }
             ],
@@ -1579,29 +1810,96 @@ function AtlasFunctionBlocks() {
 
 function BlindFunctionBlocks() {
     return [
+        { // TODO : make debuff { ... } stuff combine in `generators.js`
+            type: 'blind_debuffs_value',
+            title: 'Debuff Rank: ',
+            category: 'Debuffs',
+            color: '#cc6666',
+            lua: 'debuff = { value = "[[a]]", },\n',
+            fields: [
+                { name: 'a', label: '', type: 'dropdown', options: ["None","Ace","King","Queen","Jack","10","9","8","7","6","5","4","3","2"] },
+            ],
+            tooltip: 'Debuff all playing cards with their rank equal to the specified value'
+        },
         {
-            type: 'debuffs',
-            title: 'Debuffs: ',
+            type: 'blind_debuffs_suit',
+            title: 'Debuff Suit: ',
+            category: 'Debuffs',
+            color: '#cc6666',
+            lua: 'debuff = { suit = "[[b]]", },\n',
+            fields: [
+                { name: 'b', label: '', type: 'dropdown', options: ["None","Hearts","Clubs","Spades","Diamonds"] },
+            ],
+            tooltip: 'Debuff all playing cards with their suit equal to the specified value'
+        },
+        {
+            type: 'blind_debuffs_is_face',
+            title: 'Debuff all face cards: ',
+            category: 'Debuffs',
+            color: '#cc6666',
+            lua: 'debuff = { is_face = [[t]], },\n',
+            fields: [
+                { name: 't', label: '', type: 'dropdown', options: ["false","true"] },
+            ],
+            tooltip: 'Debuff all face cards, if true.'
+        },
+        {
+            type: 'blind_ignore_showdown_check',
+            title: 'Ignore Showdown Check: ',
             category: 'Blind',
             color: '#cc6666',
-            lua: 'debuff = { value = "[[a]]", suit = "[[b]]", hand = { ["[[c]]"] = true },\n',
+            lua: 'ignore_showdown_check = [[t]]',
             fields: [
-                { name: 'a', label: 'Value', type: 'dropdown', options: ["None","Ace","King","Queen","Jack","10","9","8","7","6","5","4","3","2"] },
-                { name: 'b', label: 'Suit', type: 'dropdown', options: ["None","Hearts","Clubs","Spades","Diamonds"] },
-                { name: 'c', label: 'Hand', type: 'dropdown', options: ["None","High Card","Flush","Flush Five","Full House","Pair","Three of a Kind","Four of a Kind","Straight","Straight Flush","Two Pair","Five of a Kind","Flush House"] },
+                { name: 't', label: '', type: 'dropdown', options: ["false","true"] },
             ],
-            tooltip: 'The debuffed card value & suit, and debuffed poker hand.'
+            tooltip: 'If true, this allows `In Pool` to be evaluated regardless of whether a showdown Boss Blind was requested or not.'
         },
+        {
+            type: 'blind_debuffs_hand',
+            title: 'Debuff Hand: ',
+            category: 'Debuffs',
+            color: '#cc6666',
+            lua: 'debuff = { hand = { ["[[c]]"] = true }, },\n',
+            fields: [
+                { name: 'c', label: '', type: 'dropdown', options: ["None","High Card","Flush","Flush Five","Full House","Pair","Three of a Kind","Four of a Kind","Straight","Straight Flush","Two Pair","Five of a Kind","Flush House"] },
+            ],
+            tooltip: 'Debuff the specified poker hand'
+        },
+        {
+            type: 'blind_debuffs_h_size_ge',
+            title: 'Must play at least: ',
+            category: 'Debuffs',
+            color: '#cc6666',
+            lua: 'debuff = { h_size_ge = [[n]], },\n',
+            valueInputs: [
+				{ name: 'n', label: '' },
+			],
+            tooltip: 'Debuff the specified poker hand'
+        },
+        {
+            type: 'blind_debuffs_h_size_le',
+            title: 'Must play at most: ',
+            category: 'Debuffs',
+            color: '#cc6666',
+            lua: 'debuff = { h_size_le = [[n]], },\n',
+            valueInputs: [
+				{ name: 'n', label: '' },
+			],
+            tooltip: 'Debuff the specified poker hand'
+        },		
         {
             type: 'boss_type',
             title: '',
             category: 'Blind',
+			fieldsFirst: true,
             color: '#cc6666',
             lua: 'boss = {[[boss_content]]},\n',
             fields: [
                 { name: 'type', label: 'Type', type: 'dropdown', options: ['Boss Blind', 'Showdown'] },
-                { name: 'min', label: 'Min Ante', type: 'dropdown', options: ['1','2','3','4','5','6','7'], default: 'None' }
             ],
+            valueInputs: [
+                { name: 'min', label: 'Min Ante' },
+            ],			
             tooltip: 'Sets the Blind as a Boss or Showdown. Min Ante applies only to Boss Blinds.'
         },
         {

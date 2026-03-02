@@ -34,12 +34,45 @@ function resetLocalVarTracking() {
   declaredLocals = new Set();
 }
 
+// Merge consecutive `debuff = { ... }` lines (from blind debuff blocks) into one table.
+// e.g. `debuff = { value = "Ace", },` + `debuff = { suit = "Hearts", },`
+// becomes `debuff = { value = "Ace", suit = "Hearts" },`
+function mergeDebuffLines(code) {
+  return code.replace(/([ \t]*debuff\s*=\s*\{[^}]*\},?\s*\n?)+/g, (match) => {
+    const pairs = [];
+    const innerRegex = /\{([^}]*)\}/g;
+    let inner;
+    while ((inner = innerRegex.exec(match)) !== null) {
+      const pairRegex = /(\w+)\s*=\s*("(?:[^"\\]|\\.)*"|\w+)/g;
+      let p;
+      while ((p = pairRegex.exec(inner[1])) !== null) {
+        pairs.push(`${p[1]} = ${p[2]}`);
+      }
+    }
+    // Preserve leading indentation from the first line
+    const indent = (match.match(/^([ \t]*)/) || ['', ''])[1];
+    return `${indent}debuff = { ${pairs.join(', ')} },\n`;
+  });
+}
+
 // Hook into workspace code generation to reset tracking
 const originalWorkspaceToCode = Blockly.Lua.workspaceToCode;
 Blockly.Lua.workspaceToCode = function(workspace) {
   resetLocalVarTracking();
-  return originalWorkspaceToCode.call(this, workspace);
+  let code = originalWorkspaceToCode.call(this, workspace);
+  code = mergeDebuffLines(code);
+  return code;
 };
+
+// Shared helper: walk up the block tree to check if we're inside a blind_object
+function isInsideBlind(block) {
+  let parent = block.getSurroundParent();
+  while (parent) {
+    if (parent.type === 'blind_object') return true;
+    parent = parent.getSurroundParent();
+  }
+  return false;
+}
 
 function genLuaFromTemplate(template, block) {
   
@@ -93,7 +126,12 @@ function genLuaFromTemplate(template, block) {
     
   const next = block.getNextBlock();
   const nextCode = next ? Blockly.Lua.blockToCode(next) : '';
-  result = result.replaceAll('[[children]]', nextCode ?? '');
+  if (result.includes('[[children]]')) {
+    result = result.replaceAll('[[children]]', nextCode ?? '');
+  } else if (nextCode) {
+    // Auto-append next block code when the template doesn't explicitly handle it
+    result += nextCode;
+  }
 
   if (block.type.includes('loc_txt')) {
       let textField = block.getFieldValue('b') || '';
@@ -124,6 +162,12 @@ function genLuaFromTemplate(template, block) {
 
   // clean up multiple blank lines
   result = result.replace(/\n{3,}/g, '\n\n');
+
+  // If the block def has replaceCard:true and we're inside a blind, swap \bcard\b → blind
+  const blockDef = BLOCK_DEFS.find(d => d.type === block.type);
+  if (blockDef?.replaceCard && isInsideBlind(block)) {
+    result = result.replace(/\bcard\b/g, 'blind');
+  }
 
 {
   // Don't merge if we have if/else/for/while structures that contain the returns
@@ -164,7 +208,7 @@ Blockly.Lua.forBlock['not'] = function(block) {
         conditionCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `(not (${conditionCode}))`;
+    const code = `not ${conditionCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -185,7 +229,7 @@ Blockly.Lua.forBlock['and'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `((${leftCode}) and (${rightCode}))`;
+    const code = `${leftCode} and ${rightCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -249,7 +293,7 @@ Blockly.Lua.forBlock['or'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `((${leftCode}) or (${rightCode}))`;
+    const code = `${leftCode} or ${rightCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -272,7 +316,8 @@ Blockly.Lua.forBlock['givex'] = function(block) {
     'XChips': 'xchips',
     'XMult': 'xmult',
     'Dollars': 'dollars',
-    'Message': 'message'
+    'Message': 'message',
+	'Colour': 'colour',
   };
   const key = varMap[varName] || varName;
 
@@ -322,18 +367,18 @@ Blockly.Lua.forBlock['check_suit'] = function(block) {
 Blockly.Lua.forBlock['pseudorandom'] = function(block) {
   const minBlock = block.getInputTargetBlock('min');
   const maxBlock = block.getInputTargetBlock('max');
-  let seed = generateRandomString(10);
-
-  if (block.getInputTargetBlock('seed')) {
-    seed = `${block.getInputTargetBlock('seed')}`;
-  } else {
-    let randomSeed = seed
-    seed = `pseudoseed('${randomSeed}')`
-  }
+  const seed = block.getInputTargetBlock('seed')
 
   let minCode = '0';
   let maxCode = '0';
+  let seedCode = `'joker_blocks'`;
 
+  if (seed) {
+    const generated = Blockly.Lua.blockToCode(seed);
+    seedCode = Array.isArray(generated) ? generated[0] : generated;
+    seedCode = minCode.replace(/\n$/, '');
+  }
+  
   if (minBlock) {
     const generated = Blockly.Lua.blockToCode(minBlock);
     minCode = Array.isArray(generated) ? generated[0] : generated;
@@ -346,8 +391,66 @@ Blockly.Lua.forBlock['pseudorandom'] = function(block) {
     maxCode = maxCode.replace(/\n$/, '');
   }
 
-  return [`pseudorandom(${seed}, ${minCode}, ${maxCode})`, Blockly.Lua.ORDER_ATOMIC];
+  return [`pseudorandom(${seedCode}, ${minCode}, ${maxCode})`, Blockly.Lua.ORDER_ATOMIC];
 };
+
+Blockly.Lua.forBlock['random_prob'] = function(block) {
+  const numeratorBlock = block.getInputTargetBlock('numerator');
+  const denominatorBlock = block.getInputTargetBlock('denominator');
+  const seedBlock = block.getInputTargetBlock('seed');
+
+  let numeratorCode = '0', denominatorCode = '1', seedCode = "'joker_blocks'";
+
+  if (numeratorBlock) {
+    const g = Blockly.Lua.blockToCode(numeratorBlock);
+    numeratorCode = (Array.isArray(g) ? g[0] : g).replace(/\n$/, '');
+  }
+  if (denominatorBlock) {
+    const g = Blockly.Lua.blockToCode(denominatorBlock);
+    denominatorCode = (Array.isArray(g) ? g[0] : g).replace(/\n$/, '');
+  }
+  if (seedBlock) {
+    const g = Blockly.Lua.blockToCode(seedBlock);
+    seedCode = (Array.isArray(g) ? g[0] : g).replace(/\n$/, '');
+  }
+
+  // Walk up block tree to check if we're inside a blind_object
+  const firstArg = isInsideBlind(block) ? 'blind' : 'card';
+
+  return [`SMODS.pseudorandom_probability(${firstArg}, ${seedCode}, ${numeratorCode}, ${denominatorCode})`, Blockly.Lua.ORDER_ATOMIC];
+};
+
+Blockly.Lua.forBlock['get_prob_vars'] = function(block) {
+  const typeBlock = block.getInputTargetBlock('type');
+  const numeratorBlock = block.getInputTargetBlock('numerator');
+  const denominatorBlock = block.getInputTargetBlock('denominator');
+  const seedBlock = block.getInputTargetBlock('seed');
+
+  let typeCode = '1', numeratorCode = '0', denominatorCode = '1', seedCode = "'joker_blocks'";
+
+  if (typeBlock) {
+    const g = Blockly.Lua.blockToCode(typeBlock);
+    typeCode = (Array.isArray(g) ? g[0] : g).replace(/\n$/, '');
+  }
+  if (numeratorBlock) {
+    const g = Blockly.Lua.blockToCode(numeratorBlock);
+    numeratorCode = (Array.isArray(g) ? g[0] : g).replace(/\n$/, '');
+  }
+  if (denominatorBlock) {
+    const g = Blockly.Lua.blockToCode(denominatorBlock);
+    denominatorCode = (Array.isArray(g) ? g[0] : g).replace(/\n$/, '');
+  }
+  if (seedBlock) {
+    const g = Blockly.Lua.blockToCode(seedBlock);
+    seedCode = (Array.isArray(g) ? g[0] : g).replace(/\n$/, '');
+  }
+
+  // Walk up block tree to check if we're inside a blind_object
+  const firstArg = isInsideBlind(block) ? 'blind' : 'card';
+
+  return [`(SMODS.get_probability_vars(${firstArg}, ${numeratorCode}, ${denominatorCode}, ${seedCode}))[${typeCode}]`, Blockly.Lua.ORDER_ATOMIC];
+};
+
 
 Blockly.Lua.forBlock['if_else'] = function(block) {
   const conditionBlock = block.getInputTargetBlock('condition');
@@ -386,7 +489,7 @@ Blockly.Lua.forBlock['minus'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `((${leftCode}) - (${rightCode}))`;
+    const code = `${leftCode} - ${rightCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -407,7 +510,7 @@ Blockly.Lua.forBlock['add'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `((${leftCode}) + (${rightCode}))`;
+    const code = `${leftCode} + ${rightCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -428,7 +531,7 @@ Blockly.Lua.forBlock['modulo'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `((${leftCode}) % (${rightCode}))`;
+    const code = `${leftCode}) % ${rightCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -449,7 +552,7 @@ Blockly.Lua.forBlock['multiply'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `((${leftCode}) * (${rightCode}))`;
+    const code = `${leftCode}) * ${rightCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -470,7 +573,7 @@ Blockly.Lua.forBlock['divide'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `((${leftCode}) / (${rightCode}))`;
+    const code = `${leftCode}) / ${rightCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -504,7 +607,7 @@ Blockly.Lua.forBlock['compare'] = function(block) {
     if (Array.isArray(aCode)) aCode = aCode[0];
     if (Array.isArray(bCode)) bCode = bCode[0];
     
-    const code = `(${aCode} ${op} ${bCode})`;
+    const code = `${aCode} ${op} ${bCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -568,9 +671,8 @@ Blockly.Lua.forBlock['cards_stuff'] = function(block) {
 
     if (idx) {
       return `${cards}[${idx}]`; 
-    } else {
-      return ``;
     }
+    return ``;
 };
 
 Blockly.Lua.forBlock['card_conditions'] = function(block) {
@@ -623,7 +725,15 @@ Blockly.Lua.forBlock['game_conditions'] = function(block) {
 
 Blockly.Lua.forBlock['change'] = function(block) {
     const type = block.getFieldValue('t');
-    const value = block.getFieldValue('v');
+    const valueBlock = block.getInputTargetBlock('v');
+
+    // Properly get Lua code from the connected value block
+    let valueCode = '0';
+    if (valueBlock) {
+        const generated = Blockly.Lua.blockToCode(valueBlock);
+        valueCode = Array.isArray(generated) ? generated[0] : generated;
+        valueCode = valueCode.replace(/\n$/, '');
+    }
     
     // Map dropdown to Lua functions
     const functionMap = {
@@ -632,19 +742,19 @@ Blockly.Lua.forBlock['change'] = function(block) {
         "Temp. Discards": "ease_discards",
         "Temp. Hands": "ease_hands",
         "Hand Size": "G.hand:change_size",
-        "Hands": "",
-        "Discards": ""
     };
     
     const func = functionMap[type] || "--";
     
-    if (type == "Hands") {
-        return `G.GAME.round_resets.hands = G.GAME.round_resets.hands + (${value})\n`;
-    } else if (type == "Discards") {
-        return `G.GAME.round_resets.discards = G.GAME.round_resets.discards + (${value})\n`;
+    let code = '';
+    if (type == "Perm. Hands") {
+        code = `G.GAME.round_resets.hands = G.GAME.round_resets.hands + (${valueCode})\n`;
+    } else if (type == "Perm. Discards") {
+        code = `G.GAME.round_resets.discards = G.GAME.round_resets.discards + (${valueCode})\n`;
     } else {
-        return `${func}(${value})\n`;
+        code = `${func}(${valueCode})\n`;
     }
+    return code;
     
 };
 
@@ -720,11 +830,31 @@ Blockly.Lua.forBlock['destroy_card'] = function(block) {
 
   let code = '';
   if (idxCode != 'all') {
-    code = `local idx = ${idxCode}\nif #G.${luaType}.cards > 0 and #G.${luaType}.cards <= idx then\n    SMODS.destroy_cards(G.${luaType}.cards[idx])\nend`;
+    code = `local idx = ${idxCode}\nif #G.${luaType}.cards > 0 and #G.${luaType}.cards <= idx then\n    SMODS.destroy_cards(G.${luaType}.cards[idx])\nend\n`;
   } else {
-    code = `for k, v in pairs(G.${luaType}.cards) do\n    SMODS.destroy_cards(v)\nend`;
+    code = `for k, v in pairs(G.${luaType}.cards) do\n    SMODS.destroy_cards(v)\nend\n`;
   }
   return code;
+};
+
+Blockly.Lua.forBlock['left_parenthesis'] = function(block) {
+  const inputBlock = block.getInputTargetBlock('input');
+  let inputCode = '';
+  if (inputBlock) {
+    const generated = Blockly.Lua.blockToCode(inputBlock);
+    inputCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+  }
+  return [`(${inputCode}`, Blockly.Lua.ORDER_ATOMIC];
+};
+
+Blockly.Lua.forBlock['right_parenthesis'] = function(block) {
+  const inputBlock = block.getInputTargetBlock('input');
+  let inputCode = '';
+  if (inputBlock) {
+    const generated = Blockly.Lua.blockToCode(inputBlock);
+    inputCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+  }
+  return [`${inputCode})`, Blockly.Lua.ORDER_ATOMIC];
 };
 
 Blockly.Lua.forBlock['card_amt'] = function(block) {
@@ -795,18 +925,7 @@ Blockly.Lua.forBlock['calc'] = function(block) {
   let body = Blockly.Lua.statementToCode(block, 'body');
   body = indentLua(body, 1); 
 
-  let parent = block.getSurroundParent();
-  let insideBlind = false;
-
-  while (parent) {
-    if (parent.type === 'blind') {
-      insideBlind = true;
-      break;
-    }
-    parent = parent.getSurroundParent();
-  }
-
-  if (insideBlind) {
+  if (isInsideBlind(block)) {
     return `    calculate = function(self, blind, context)\n${body}\n    end,\n`;
   } else {
     return `    calculate = function(self, card, context)\n${body}\n    end,\n`;
@@ -815,7 +934,7 @@ Blockly.Lua.forBlock['calc'] = function(block) {
 
 Blockly.Lua.forBlock['boss_type'] = function(block) {
     const type = block.getFieldValue('type');
-    const min = block.getFieldValue('min');
+    const min = block.getInputTargetBlock('min');
 
     if (type === 'Showdown') {
         return '    boss = { showdown = true },\n';
@@ -849,7 +968,7 @@ Blockly.Lua.forBlock['in_blind'] = function(block) {
 
 Blockly.Lua.forBlock['change_sfreq'] = function(block) {
     const req = block.getFieldValue('a') || '4';
-    const rawId = (block.getFieldValue('id') || 'four_fingers').trim();
+    const rawId = block.getInputTargetBlock('id')
     const prefix = (Blockly.Lua && Blockly.Lua.modPrefix) ? String(Blockly.Lua.modPrefix) : '';
     
     let fullId = rawId;
@@ -873,6 +992,56 @@ end
     // Return nothing here (we append later)
     return '';
 };
+
+Blockly.Lua.forBlock['hooks_shortcut'] = function(block) {
+    const rawId = block.getInputTargetBlock('id')
+    const prefix = (Blockly.Lua && Blockly.Lua.modPrefix) ? String(Blockly.Lua.modPrefix) : '';
+    
+    let fullId = rawId;
+    if (!/^j_/.test(rawId)) {
+        fullId = prefix ? `j_${prefix}_${rawId}` : `j_${rawId}`;
+    }
+
+    const code =
+`local smods_shortcut_ref = SMODS.shortcut
+function SMODS.shortcut()
+    if next(SMODS.find_card('${fullId}')) then
+        return true
+    end
+    return smods_shortcut_ref()
+end
+`;
+
+    // Instead of returning, collect it for the end
+    Blockly.Lua.hooks.push(code);
+
+    // Return nothing here (we append later)
+    return '';
+};
+
+Blockly.Lua.forBlock['accfc'] = function(block) {
+    const rawId = block.getInputTargetBlock('id')
+    const prefix = (Blockly.Lua && Blockly.Lua.modPrefix) ? String(Blockly.Lua.modPrefix) : '';
+    
+    let fullId = rawId;
+    if (!/^j_/.test(rawId)) {
+        fullId = prefix ? `j_${prefix}_${rawId}` : `j_${rawId}`;
+    }
+
+    const code =
+`local card_is_face_ref = Card.is_face
+function Card:is_face(from_boss)
+    return card_is_face_ref(self, from_boss) or (self:get_id() and next(SMODS.find_card("${fullId}")))
+end
+`;
+
+    // Instead of returning, collect it for the end
+    Blockly.Lua.hooks.push(code);
+
+    // Return nothing here (we append later)
+    return '';
+};
+
 
 Blockly.Lua.forBlock['var_get'] = function(block) {
     const varName = block.getFieldValue('VAR');
@@ -945,7 +1114,9 @@ Blockly.Lua.forBlock['loc_vars'] = function(block) {
     const firstChild = block.getInputTargetBlock('body');
     let regularCode = '';
     let varItems = [];
-
+	
+    const insideBlind = isInsideBlind(block);
+	
     let current = firstChild;
     while (current) {
         if (current.type === 'return_loc_var') {
@@ -967,8 +1138,12 @@ Blockly.Lua.forBlock['loc_vars'] = function(block) {
     if (varItems.length > 0) {
         body += '    return { vars = { ' + varItems.join(', ') + ', } }\n';
     }
-
-    return `loc_vars = function(self, info_queue, card)\n${body}end,\n`;
+	
+	if (insideBlind) {
+		return `loc_vars = function(self)\n${body}end,\n`;
+	} else {
+		return `loc_vars = function(self, info_queue, card)\n${body}end,\n`;
+	}
 };
 
 // mod_numerator and mod_denominator: when both are present as siblings, merge into one return.

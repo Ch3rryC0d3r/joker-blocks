@@ -459,6 +459,89 @@ window.addEventListener("load", () => {
   workspace.addChangeListener(saveWorkspace);
   loadWorkspace();
 
+  // === Toolbox Search ===
+  function initToolboxSearch() {
+    const toolboxEl = document.getElementById('toolbox');
+
+    // Snapshot the normal toolbox XML (blocks.js already set it)
+    window._normalToolboxXml = toolboxEl.innerHTML;
+
+    setTimeout(() => {
+      const toolboxDiv = document.querySelector('.blocklyToolboxDiv');
+      if (!toolboxDiv) return;
+
+      // --- Build the search bar DOM ---
+      const searchWrap = document.createElement('div');
+      searchWrap.id = 'toolboxSearchWrap';
+      searchWrap.style.cssText = `
+        padding: 6px 8px;
+        border-bottom: 1px solid rgba(128,128,128,0.25);
+        position: sticky;
+        top: 0;
+        z-index: 10;
+        background: inherit;
+        box-sizing: border-box;
+      `;
+
+      const searchInput = document.createElement('input');
+      searchInput.id = 'toolboxSearchInput';
+      searchInput.type = 'text';
+      searchInput.placeholder = '🔍 Search blocks...';
+      searchInput.style.cssText = `
+        width: 100%;
+        padding: 5px 8px;
+        border: none;
+        border-radius: 4px;
+        font-size: 12px;
+        background: rgba(128,128,128,0.2);
+        color: inherit;
+        outline: none;
+        box-sizing: border-box;
+      `;
+
+      searchWrap.appendChild(searchInput);
+      toolboxDiv.prepend(searchWrap);
+
+      // --- Search logic ---
+      let debounceTimer;
+      searchInput.addEventListener('input', () => {
+        clearTimeout(debounceTimer);
+        debounceTimer = setTimeout(() => {
+          const query = searchInput.value.trim().toLowerCase();
+
+          if (!query) {
+            // Restore normal categories
+            toolboxEl.innerHTML = window._normalToolboxXml;
+            workspace.updateToolbox(toolboxEl);
+            return;
+          }
+
+          const matches = BLOCK_DEFS.filter(def =>
+            def.title?.toLowerCase().includes(query) ||
+            def.type?.toLowerCase().includes(query) ||
+            def.category?.toLowerCase().includes(query) ||
+            def.tooltip?.toLowerCase().includes(query)
+          );
+
+          const resultsXml = matches.length > 0
+            ? `<category name="🔍 Results (${matches.length})" colour="#e8a020">
+                ${matches.map(d => `<block type="${d.type}"></block>`).join('')}
+               </category>`
+            : `<category name="No results" colour="#888"></category>`;
+
+          toolboxEl.innerHTML = resultsXml;
+          workspace.updateToolbox(toolboxEl);
+        }, 150);
+      });
+
+      // Stop Blockly from swallowing keystrokes while typing in the search bar
+      searchInput.addEventListener('keydown', e => e.stopPropagation());
+      searchInput.addEventListener('keyup',   e => e.stopPropagation());
+    }, 150);
+  }
+
+  initToolboxSearch();
+
   // --- UI Elements ---
   const optionsBtn = document.getElementById("optionsBtn");
   const optionsMenu = document.getElementById("optionsMenu");
@@ -756,7 +839,9 @@ window.addEventListener("load", () => {
       'Scoring':      'General',
       'Cards':        'General',
       'Game Values':  'General',
-      'Values':       'Logic'
+      'Values':       'Logic',
+	  'Hooks': 'General',
+	  'Debuffs': 'Blind'
     };
 
     // Add categories in defined order
@@ -797,6 +882,8 @@ window.addEventListener("load", () => {
     const toolbox = document.getElementById("toolbox");
     toolbox.innerHTML = toolboxXml;
     workspace.updateToolbox(toolbox);
+    // Keep search restore XML in sync after rebuilds (e.g. custom block added)
+    window._normalToolboxXml = toolboxXml;
   }
 
   // Add button to options menu

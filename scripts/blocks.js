@@ -18,66 +18,84 @@ BLOCK_DEFS.forEach(def => {
 
   if (def.tooltip) json.tooltip = def.tooltip;
 
+  // build a unified item list from both valueInputs and fields.
+  // Each item gets a sort key: explicit `order` if set, otherwise a default that preserves the original behaviour (valueInputs first, unless fieldsFirst).
+  // Default slots: valueInputs > 0, 2, 4... | fields > 1, 3, 5...
+  // With fieldsFirst flipped: fields > 0, 2, 4... | valueInputs > 1, 3, 5...
+  const allItems = [];
+
+  (def.valueInputs || []).forEach((inp, i) => {
+    allItems.push({
+      _kind: 'value',
+      _defaultOrder: def.fieldsFirst ? i * 2 + 1 : i * 2,
+      ...inp
+    });
+  });
+
+  (def.fields || []).forEach((f, i) => {
+    if (def.json && !f.name) f.name = 'value';
+    allItems.push({
+      _kind: 'field',
+      _defaultOrder: def.fieldsFirst ? i * 2 : i * 2 + 1,
+      ...f
+    });
+  });
+
+  // Sort: use explicit `order` if provided, else fall back to _defaultOrder.
+  // Ties keep their original relative position (stable sort via index).
+  allItems.sort((a, b) => {
+    const oa = a.order ?? a._defaultOrder;
+    const ob = b.order ?? b._defaultOrder;
+    return oa - ob;
+  });
+
   let argCount = 0;
 
-  const processValueInputs = () => def.valueInputs?.forEach((inp) => {
-      argCount++;
-      if (inp.label) {
-          json.message0 += ` ${inp.label} %${argCount}`;
+  allItems.forEach(item => {
+    argCount++;
+
+    if (item._kind === 'value') {
+      if (item.label) {
+        json.message0 += ` ${item.label} %${argCount}`;
       } else {
-          json.message0 += ` %${argCount}`;
+        json.message0 += ` %${argCount}`;
       }
       json.args0.push({
-          type: 'input_value',
-          name: inp.name,
-          check: inp.check || null
+        type: 'input_value',
+        name: item.name,
+        check: item.check || null
       });
-  });
 
-  // Handle value inputs FIRST (unless fieldsFirst is set)
-  if (!def.fieldsFirst) processValueInputs();
-
-  // Handle fields AFTER (so they appear on the right)
-  def.fields?.forEach((f) => {
-    if (def.json && !f.name) f.name = 'value';
-
-    argCount++;
-    if (f.label) {
-    json.message0 += ` ${f.label}: %${argCount}`;
     } else {
-    json.message0 += ` %${argCount}`;
-    }
+      // field
+      if (item.label) {
+        json.message0 += ` ${item.label}: %${argCount}`;
+      } else {
+        json.message0 += ` %${argCount}`;
+      }
 
-        if (f.type === 'dropdown') {
-        // handle both ['Label','Value'] and 'String' formats
-        const sortedOptions = [...f.options].sort((a, b) => {
-            const labelA = Array.isArray(a) ? a[0] : a;
-            const labelB = Array.isArray(b) ? b[0] : b;
-
-            if (labelA === 'None') return -1;
-            if (labelB === 'None') return 1;
-            return labelA.toLowerCase().localeCompare(labelB.toLowerCase());
+      if (item.type === 'dropdown') {
+        const sortedOptions = [...item.options].sort((a, b) => {
+          const labelA = Array.isArray(a) ? a[0] : a;
+          const labelB = Array.isArray(b) ? b[0] : b;
+          if (labelA === 'None') return -1;
+          if (labelB === 'None') return 1;
+          return labelA.toLowerCase().localeCompare(labelB.toLowerCase());
         });
-
         json.args0.push({
-            type: 'field_dropdown',
-            name: f.name,
-            options: sortedOptions.map(opt => 
-            Array.isArray(opt) ? opt : [opt, opt]
-            )
+          type: 'field_dropdown',
+          name: item.name,
+          options: sortedOptions.map(opt => Array.isArray(opt) ? opt : [opt, opt])
         });
-
-    } else {
-      json.args0.push({
-        type: 'field_input',
-        name: f.name,
-        text: f.default || ''
-      });
+      } else {
+        json.args0.push({
+          type: 'field_input',
+          name: item.name,
+          text: item.default || ''
+        });
+      }
     }
   });
-
-  // If fieldsFirst, now append value inputs after fields
-  if (def.fieldsFirst) processValueInputs();
 
   if (def.statementInput) {
     json.message1 = '%1';
@@ -201,7 +219,8 @@ Blockly.Blocks['givex'].init = function() {
         ['XChips','XChips'],
         ['XMult','XMult'],
         ['Dollars','Dollars'],
-        ['Message','Message']
+        ['Message','Message'],
+		['Colour','Colour'],
       ]), 'var')
       .appendField('=');
       
@@ -220,6 +239,9 @@ Blockly.Blocks['game_value_set'].init = function() {
         ['Maximum Bankruptcy','G.GAME.bankrupt_at'],
         ['Dollars','G.GAME.dollars'],
         ['Round', 'G.GAME.round'],
+        ['Joker buffer', 'G.GAME.joker_buffer'],
+        ['Consumable buffer', 'G.GAME.consumeable_buffer'],
+		['Gros Michel Extinct Flag','G.GAME.pool_flags.vremade_gros_michel_extinct'],
       ]), 'var')
       .appendField('to');
       
@@ -640,6 +662,66 @@ Blockly.Blocks['card_amt'].init = function() {
   this.setTooltip('Calculates how many jokers of the given `id` is currently held.');
 };
 
+Blockly.Blocks['change_sfreq'].init = function() {
+  this.setColour('#a18de5');
+  
+  this.appendDummyInput()
+      .appendField('Change Straight/Flush Requirement to')
+	  
+  this.appendValueInput('a')
+      .setCheck(null) 
+	  
+  this.appendDummyInput()
+      .appendField('when Joker of ID')
+	  
+  this.appendValueInput('id')
+      .setCheck(null)
+	  
+  this.appendDummyInput()
+      .appendField('is present')
+	  
+  this.setInputsInline(true);
+  this.setPreviousStatement(false, null);
+  this.setTooltip('Changes the minimum number of cards required to make Straights/Flushes when a card with the given id is present. The ID musn\'t contain the mod prefix, this is automatic. This block can be put anywhere.');
+  this.setNextStatement(false, null);
+};
+
+Blockly.Blocks['hooks_shortcut'].init = function() {
+  this.setColour('#a18de5');
+  
+  this.appendDummyInput()
+      .appendField('Allow Straights to be made with gaps of 1 rank')
+	  
+  this.appendValueInput('id')
+      .setCheck(null)
+	  
+  this.appendDummyInput()
+      .appendField('is present')
+	  
+  this.setInputsInline(true);
+  this.setPreviousStatement(false, null);
+  this.setTooltip('Straights will be able to be made with gaps of 1 rank, Shortcut uses this. The ID musn\'t contain the mod prefix, this is automatic. This block can be put anywhere.');
+  this.setNextStatement(false, null);
+};
+
+Blockly.Blocks['accfc'].init = function() {
+  this.setColour('#a18de5');
+  
+  this.appendDummyInput()
+      .appendField('All Cards == Face Cards when Joker of ID:')
+	  
+  this.appendValueInput('id')
+      .setCheck(null)
+	  
+  this.appendDummyInput()
+      .appendField('is present')
+	  
+  this.setInputsInline(true);
+  this.setPreviousStatement(false, null);
+  this.setTooltip('All cards will be considered face cards, similar to how Pareidolia does this. The ID musn\'t contain the mod prefix, this is automatic. This block can be put anywhere.');
+  this.setNextStatement(false, null);
+};
+
 Blockly.Blocks['return'].init = function() {
   this.setColour('#b8cf72');
   
@@ -692,6 +774,7 @@ Blockly.Blocks['cards_stuff'].init = function() {
         ['Consumeables','G.consumeables.cards'], 
         ['Full Deck','G.playing_cards'], 
         ['(Context) Card Effects','context.card_effects'], 
+		['Scoring Hand','context.scoring_hand'],
       ]), 'cards');
       
   this.setInputsInline(true);
@@ -728,7 +811,7 @@ Blockly.Blocks['pseudorandom'].init = function() {
   this.setOutput(true, 'Number');
 
   this.appendDummyInput()
-      .appendField('Pick random')
+      .appendField('Random Number')
 
   this.appendValueInput('min')
       .setCheck(null);
@@ -740,14 +823,74 @@ Blockly.Blocks['pseudorandom'].init = function() {
       .setCheck(null);
 
   this.appendDummyInput()
+      .appendField('with seed')
+
+  this.appendValueInput('seed')
+      .setCheck(null);
+
+  this.setInputsInline(true);
+  this.setTooltip('Returns a random number between two using `pseudorandom(...)` (seed will be a preset value if none is provided).');
+};
+
+Blockly.Blocks['random_prob'].init = function() {
+  this.setColour('#4079aa');
+  this.setOutput(true, 'Number');
+
+  this.appendDummyInput()
+      .appendField('Random Probability')
+
+  this.appendValueInput('numerator')
+      .setCheck(null);
+
+  this.appendDummyInput()
+      .appendField('to')
+
+  this.appendValueInput('denominator')
+      .setCheck(null);
+	  
+  this.appendDummyInput()
+      .appendField('with seed')
+
+  this.appendValueInput('seed')
+      .setCheck(null);
+
+  this.setInputsInline(true);
+  this.setTooltip('Returns a random probability (`[numerator] in [denominator] chance`). Seed is usually your mod prefix + this card (i.e. `prefix_joker_name`)');
+};
+
+
+Blockly.Blocks['get_prob_vars'].init = function() {
+  this.setColour('#4079aa');
+  this.setOutput(true, 'Number');
+
+  this.appendDummyInput()
+      .appendField('Get Probability Variable')
+
+  this.appendValueInput('type')
+      .setCheck(null);
+	  
+  this.appendDummyInput()
+      .appendField('numerator')
+
+  this.appendValueInput('numerator')
+      .setCheck(null);
+	  
+  this.appendDummyInput()
+      .appendField('denominator')
+
+  this.appendValueInput('denominator')
+      .setCheck(null);
+	  
+  this.appendDummyInput()
       .appendField('seed')
 
   this.appendValueInput('seed')
       .setCheck(null);
 
   this.setInputsInline(true);
-  this.setTooltip('Returns a random number between two using `pseudorandom(...)` (seed is random if none is provided).');
+  this.setTooltip('If the first input is `1` you will get the numerator, `2` is the denominator. Seed will be a preset value if none is provided');
 };
+
 
 // helper to build dropdown menu
 function getVariableOptions() {
@@ -831,7 +974,9 @@ const subcategoryMap = {
   'Scoring':      'General',
   'Cards':        'General',
   'Game Values':  'General',
-  'Values':       'Logic'
+  'Hooks': 'General',
+  'Values':       'Logic',
+  'Debuffs': 'Blind'
 };
 
 const categoryOrder = [
@@ -875,12 +1020,12 @@ Object.keys(categories).forEach(cat => {
 document.getElementById("toolbox").innerHTML = toolboxXml;
 
 const CARD_PROPERTY_OPTIONS = {
-  'G.joker.cards':        [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set']],
-  'G.consumeables.cards': [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set']],
+  'G.joker.cards':        [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set'],['Extra Sell Value', 'card.ability.extra_value']],
+  'G.consumeables.cards': [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set'],['Extra Sell Value', 'card.ability.extra_value']],
   'G.hand.cards':         [['Key', 'config.center.key'],['Set', 'card.ability.set']],
   'G.play.cards':         [['Key', 'config.center.key'],['Set', 'card.ability.set']],
 };
-const CARD_PROPERTY_DEFAULT_OPTIONS = [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set']];
+const CARD_PROPERTY_DEFAULT_OPTIONS = [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set'],['Extra Sell Value', 'card.ability.extra_value']];
 
 Blockly.Blocks['card_property'].onchange = function(event) {
   if (!this.workspace) return;

@@ -1,4 +1,7 @@
-27/150 (18%) Possible
+67/150 (44%) Possible
+✅ = Possible
+☑ = Somewhat Possible
+🔲 = Not Possible / Haven't Checked
 001 . ✅ Joker (Jimbo)
 002 . ✅ Greedy Joker
 003 . ✅ Lusty Joker
@@ -20,60 +23,60 @@
 019 . ✅ Mime
 020 . ✅ Credit Card
 021 . ✅ Ceremonial Dagger
-022 . 🔲 Banner
-023 . 🔲 Mystic Summit
-024 . 🔲 Marble Joker
-025 . 🔲 Loyalty Card
-026 . 🔲 8 Ball
-027 . 🔲 Misprint
-028 . 🔲 Dusk
-029 . 🔲 Raised Fist
-030 . 🔲 Chaos the Clown
-031 . 🔲 Fibonacci
+022 . ✅ Banner
+023 . ✅ Mystic Summit
+024 . ✅ Marble Joker
+025 . ☑ Loyalty Card
+026 . ✅ 8 Ball
+027 . ☑ Misprint
+028 . ✅ Dusk
+029 . ✅ Raised Fist
+030 . ✅ Chaos the Clown
+031 . ✅ Fibonacci
 032 . ✅ Steel Joker
 033 . ✅ Scary Face
 034 . ✅ Abstract Joker
-035 . 🔲 Delayed Gratification
-036 . 🔲 Hack
-037 . 🔲 Pareidolia
-038 . 🔲 Gros Michel
-039 . 🔲 Even Steven
-040 . 🔲 Odd Todd
-041 . 🔲 Scholar
-042 . 🔲 Business Card
-043 . 🔲 Supernova
-044 . 🔲 Ride the Bus
-045 . 🔲 Space Joker
-046 . 🔲 Egg
-047 . 🔲 Burglar
-048 . 🔲 Blackboard
-049 . 🔲 Runner
-050 . 🔲 Ice Cream
+035 . ✅ Delayed Gratification
+036 . ✅ Hack
+037 . ✅ Pareidolia
+038 . ✅ Gros Michel
+039 . ✅ Even Steven
+040 . ✅ Odd Todd
+041 . ✅ Scholar
+042 . ✅ Business Card
+043 . ✅ Supernova
+044 . ✅ Ride the Bus
+045 . ✅ Space Joker
+046 . ✅ Egg
+047 . ✅ Burglar
+048 . ✅ Blackboard
+049 . ✅ Runner
+050 . ✅ Ice Cream
 051 . 🔲 DNA
-052 . 🔲 Splash
-053 . 🔲 Blue Joker
-054 . 🔲 Sixth Sense
-055 . 🔲 Constellation
-056 . 🔲 Hiker
+052 . ✅ Splash
+053 . ✅ Blue Joker
+054 . ✅ Sixth Sense
+055 . ✅ Constellation
+056 . ✅ Hiker
 057 . 🔲 Faceless Joker
-058 . 🔲 Green Joker
-059 . 🔲 Superposition
-060 . 🔲 To Do List
-061 . 🔲 Cavendish
-062 . 🔲 Card Sharp
-063 . 🔲 Red Card
-064 . 🔲 Madness
-065 . 🔲 Square Joker
-066 . 🔲 Séance
-067 . 🔲 Riff-raff
-068 . 🔲 Vampire
-069 . 🔲 Shortcut
+058 . ✅ Green Joker
+059 . ✅ Superposition
+060 . ☑ To Do List
+061 . ✅ Cavendish
+062 . ✅ Card Sharp
+063 . ✅ Red Card
+064 . ✅ Madness
+065 . ✅ Square Joker
+066 . ✅ Séance
+067 . ✅ Riff-raff
+068 . ☑ Vampire
+069 . ✅ Shortcut
 070 . 🔲 Hologram
 071 . 🔲 Vagabond
 072 . 🔲 Baron
 073 . 🔲 Cloud 9
 074 . 🔲 Rocket
-075 . 🔲 Obelisk
+075 . ✅ Obelisk
 076 . 🔲 Midas Mask
 077 . 🔲 Luchador
 078 . 🔲 Photograph

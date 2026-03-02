@@ -1,4 +1,3 @@
-
 setlocal EnableDelayedExpansion
 
 set "file=joker-progress.txt"
@@ -13,16 +12,19 @@ for /f "usebackq delims=" %%A in ("%file%") do (
     )
 )
 
-:: Calculate percentage
-set /a percent=(count*100)/total
+:: Subtract 1 from count for display
+set /a displayCount=count-1
+
+:: Calculate percentage based on total
+set /a percent=(displayCount*100)/total
 
 :: Rewrite file with updated first line
 (
-    echo !count!/!total! ^(!percent!%%^) Possible
+    echo !displayCount!/!total! ^(!percent!%%^) Possible
     more +1 "%file%"
 ) > "%file%.tmp"
 
 move /y "%file%.tmp" "%file%" >nul
 
-echo Updated: !count!/!total! (!percent!%%) Possible
+echo Updated: !displayCount!/!total! (!percent!%%) Possible
 endlocal
