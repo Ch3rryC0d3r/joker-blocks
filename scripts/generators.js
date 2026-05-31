@@ -128,8 +128,10 @@ function genLuaFromTemplate(template, block) {
   const nextCode = next ? Blockly.Lua.blockToCode(next) : '';
   if (result.includes('[[children]]')) {
     result = result.replaceAll('[[children]]', nextCode ?? '');
-  } else if (nextCode) {
-    // Auto-append next block code when the template doesn't explicitly handle it
+  } else if (nextCode && !block.getPreviousBlock()) {
+    // Only auto-append if this block is the FIRST in a chain.
+    // Non-first siblings are already walked by the parent statement loop,
+    // so appending here would double-emit them.
     result += nextCode;
   }
 
