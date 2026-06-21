@@ -1,4 +1,3 @@
-// === Dropdown search patch ===
 (function() {
   const originalShowEditor = Blockly.FieldDropdown.prototype.showEditor_;
   Blockly.FieldDropdown.prototype.showEditor_ = function() {
@@ -167,6 +166,64 @@ function renderTabs() {
   if (!bar) return;
   bar.innerHTML = "";
 
+  // Instantiate the search input once so it doesn't drop active text input focus on re-renders
+  if (!window.tabSearchInput) {
+    const input = document.createElement('input');
+    input.id = 'tabSearchInput';
+    input.type = 'text';
+    input.placeholder = 'Search...';
+    input.style.cssText = `
+      margin-left: 8px;
+      margin-right: 6px;
+      padding: 4px 8px;
+      border: 1px solid #444;
+      border-radius: 4px;
+      font-size: 12px;
+      outline: none;
+      background: #1e1e1e;
+      color: #fff;
+      z-index: 100;
+      min-width: 140px;
+    `;
+
+    // Block keystrokes from bubbling up to Blockly hotkeys
+    input.addEventListener('keydown', e => e.stopPropagation());
+    input.addEventListener('keyup', e => e.stopPropagation());
+    
+    // Filter logic
+    input.addEventListener('input', () => {
+      const query = input.value.trim().toLowerCase();
+      Array.from(bar.children).forEach(child => {
+        if (child === input || child.id === 'addTabBtn') return;
+        
+        const tabText = child.textContent || '';
+        if (query) {
+          if (tabText.toLowerCase().includes(query)) {
+            child.style.setProperty('display', '', 'important');
+          } else {
+            child.style.setProperty('display', 'none', 'important');
+          }
+        } else {
+          child.style.display = '';
+        }
+      });
+    });
+    window.tabSearchInput = input;
+  }
+
+  // Render Search Input first on the left
+  bar.appendChild(window.tabSearchInput);
+
+  // Render the "+" button immediately next to it
+  const addBtn = document.createElement("button");
+  addBtn.id = "addTabBtn";
+  addBtn.textContent = "+";
+  addBtn.title = "New tab";
+  addBtn.style.marginRight = "10px";
+  addBtn.addEventListener("click", addNewTab);
+  bar.appendChild(addBtn);
+
+  // Render the active tab list elements
   window.tabs.forEach(tab => {
     const tabEl = document.createElement("div");
     tabEl.className = "tab-item" + (tab.id === window.activeTabId ? " active" : "");
@@ -204,12 +261,19 @@ function renderTabs() {
     bar.appendChild(tabEl);
   });
 
-  const addBtn = document.createElement("button");
-  addBtn.id = "addTabBtn";
-  addBtn.textContent = "+";
-  addBtn.title = "New tab";
-  addBtn.addEventListener("click", addNewTab);
-  bar.appendChild(addBtn);
+  // Re-apply existing filter state query automatically on structural transformations
+  const activeQuery = window.tabSearchInput.value.trim().toLowerCase();
+  if (activeQuery) {
+    Array.from(bar.children).forEach(child => {
+      if (child === window.tabSearchInput || child.id === 'addTabBtn') return;
+      const tabText = child.textContent || '';
+      if (tabText.toLowerCase().includes(activeQuery)) {
+        child.style.setProperty('display', '', 'important');
+      } else {
+        child.style.setProperty('display', 'none', 'important');
+      }
+    });
+  }
 }
 
 // Helper: merge all tabs into combined XML for code generation
@@ -410,7 +474,8 @@ window.addEventListener("load", () => {
     trashcan: true,
     media: './blockly/media',
     renderer: 'zelos',
-    zoom: { controls: true, wheel: true, startScale: 0.5 }
+    move: { scrollbars: true, drag: true, wheel: false },
+    zoom: { controls: true, wheel: true, startScale: 0.5, pinch: true }
   });
   window.workspace = workspace;
   updateBlocklyTheme();
@@ -458,6 +523,142 @@ window.addEventListener("load", () => {
 
   workspace.addChangeListener(saveWorkspace);
   loadWorkspace();
+
+  // export/mport system
+  let lastWorkspaceCoords = { x: 50, y: 50 };
+  document.getElementById('blocklyDiv').addEventListener('contextmenu', (e) => {
+    if (window.workspace) {
+      try {
+        lastWorkspaceCoords = Blockly.utils.svgMath.screenToWsCoordinates(
+          window.workspace,
+          new Blockly.utils.Coordinate(e.clientX, e.clientY)
+        );
+      } catch (err) {}
+    }
+  });
+
+  // export option in menu
+  Blockly.ContextMenuRegistry.registry.register({
+    id: 'export_block_chunk',
+    displayText: 'Export Chunk (.block.json)',
+    scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+    weight: 2, 
+    preconditionFn: () => 'enabled',
+    callback: (scope) => {
+      const xmlDom = Blockly.Xml.blockToDom(scope.block);
+      const xmlText = Blockly.Xml.domToText(xmlDom);
+      
+      // Convert XML string to completely safe Base64 (removes all quotes, backticks, and slashes)
+      const base64Xml = btoa(unescape(encodeURIComponent(xmlText)));
+
+      const data = { type: 'jokerblocks_block', xml: base64Xml, isBase64: true };
+      const name = (scope.block.type || 'block') + '_chunk';
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+      
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `${name}.block.json`;
+      a.click();
+      URL.revokeObjectURL(a.href);
+    }
+  });
+
+  // imprt option in menu
+  Blockly.ContextMenuRegistry.registry.register({
+    id: 'import_block_chunk',
+    displayText: 'Import Chunk (.block.json)',
+    scopeType: Blockly.ContextMenuRegistry.ScopeType.WORKSPACE,
+    weight: 2, 
+    preconditionFn: () => 'enabled',
+    callback: () => {
+      const input = document.createElement('input');
+      input.type = 'file';
+      input.accept = '.block.json';
+      input.onchange = e => {
+        const file = e.target.files[0];
+        if (!file) return;
+        const reader = new FileReader();
+        reader.onload = ev => {
+          try {
+            const data = JSON.parse(ev.target.result);
+            if (data && data.xml) {
+              let cleanXml = data.xml;
+              
+              // if in base64, decode to xml
+              if (data.isBase64) {
+                cleanXml = decodeURIComponent(escape(atob(data.xml)));
+              }
+
+              const xmlDom = Blockly.utils.xml.textToDom(cleanXml);
+              const block = Blockly.Xml.domToBlock(xmlDom, window.workspace);
+              if (block && lastWorkspaceCoords) {
+                block.moveBy(lastWorkspaceCoords.x, lastWorkspaceCoords.y);
+                block.select();
+              }
+            } else {
+              alert('Invalid block chunk format.');
+            }
+          } catch (err) {
+            alert('Error importing block: ' + err.message);
+          }
+        };
+        reader.readAsText(file);
+      };
+      input.click();
+    }
+  });
+
+  // Global Cross-Tab Clipboard Variable
+  window.__crossTabBlockClipboard = null;
+
+  // Copy Block Menu Option
+  Blockly.ContextMenuRegistry.registry.register({
+    id: 'custom_copy_block',
+    displayText: 'Copy Block',
+    scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+    weight: 2.1,
+    preconditionFn: () => 'enabled',
+    callback: (scope) => {
+      const xmlDom = Blockly.Xml.blockToDom(scope.block);
+      window.__crossTabBlockClipboard = Blockly.Xml.domToText(xmlDom);
+    }
+  });
+
+  // Cut Block Menu Option
+  Blockly.ContextMenuRegistry.registry.register({
+    id: 'custom_cut_block',
+    displayText: 'Cut Block',
+    scopeType: Blockly.ContextMenuRegistry.ScopeType.BLOCK,
+    weight: 2.2,
+    preconditionFn: (scope) => scope.block.isDeletable() ? 'enabled' : 'disabled',
+    callback: (scope) => {
+      const xmlDom = Blockly.Xml.blockToDom(scope.block);
+      window.__crossTabBlockClipboard = Blockly.Xml.domToText(xmlDom);
+      scope.block.dispose(true);
+    }
+  });
+
+  // Paste Block Menu Option
+  Blockly.ContextMenuRegistry.registry.register({
+    id: 'custom_paste_block',
+    displayText: 'Paste Block',
+    scopeType: Blockly.ContextMenuRegistry.ScopeType.WORKSPACE,
+    weight: 2.3,
+    preconditionFn: () => window.__crossTabBlockClipboard ? 'enabled' : 'disabled',
+    callback: () => {
+      if (!window.__crossTabBlockClipboard || !window.workspace) return;
+      try {
+        const xmlDom = Blockly.utils.xml.textToDom(window.__crossTabBlockClipboard);
+        const block = Blockly.Xml.domToBlock(xmlDom, window.workspace);
+        if (block && lastWorkspaceCoords) {
+          block.moveBy(lastWorkspaceCoords.x, lastWorkspaceCoords.y);
+          block.select();
+        }
+      } catch (err) {
+        console.error('Failed to paste block:', err);
+      }
+    }
+  });
 
   // === Toolbox Search ===
   function initToolboxSearch() {
@@ -898,6 +1099,453 @@ window.addEventListener("load", () => {
     updateModPrefix();
 
   });
+
+  // remakes / templates manager
+  const remakesBtn = document.getElementById("remakesBtn");
+  const remakesModal = document.getElementById("remakesModal");
+  const closeRemakes = document.getElementById("closeRemakes");
+  const remakesList = document.getElementById("remakesList");
+
+  // define vanilla remakes
+  const VANILLA_REMAKES = [
+    { name: "Joker", file: "Joker.block.js" },
+    { name: "Greedy Joker", file: "Greedy_Joker.block.js" },
+    { name: "Lusty Joker", file: "Lusty_Joker.block.js" },
+    { name: "Wrathful Joker", file: "Wrathful_Joker.block.js" },
+    { name: "Gluttonous Joker", file: "Gluttonous_Joker.block.js" },
+    { name: "Jolly Joker", file: "Jolly_Joker.block.js" },
+    { name: "Zany Joker", file: "Zany_Joker.block.js" },
+    { name: "Mad Joker", file: "Mad_Joker.block.js" },
+    { name: "Crazy Joker", file: "Crazy_Joker.block.js" },
+    { name: "Droll Joker", file: "Droll_Joker.block.js" },
+    { name: "Sly Joker", file: "Sly_Joker.block.js" },
+    { name: "Wily Joker", file: "Wily_Joker.block.js" },
+    { name: "Clever Joker", file: "Clever_Joker.block.js" },
+    { name: "Devious Joker", file: "Devious_Joker.block.js" },
+    { name: "Crafty Joker", file: "Crafty_Joker.block.js" },
+    { name: "Half Joker", file: "Half_Joker.block.js" },
+    { name: "Joker Stencil", file: "Joker_Stencil.block.js" },
+    { name: "Four Fingers", file: "Four_Fingers.block.js" },
+    { name: "Mime", file: "Mime.block.js" },
+    { name: "Credit Card", file: "Credit_Card.block.js" },
+    { name: "Ceremonial Dagger", file: "Ceremonial_Dagger.block.js" },
+  ];
+
+  function extractTemplateDesc(blockData) {
+    // fallback
+    const fallback = { desc: "No description.", x: 0, y: 0 };
+    if (!blockData) return fallback;
+
+    if (blockData.xml) {
+      try {
+        let rawXml = blockData.xml;
+        if (blockData.isBase64 || !rawXml.trim().startsWith('<')) {
+          rawXml = decodeURIComponent(escape(atob(blockData.xml)));
+        }
+        
+        const parser = new DOMParser();
+        const xmlDoc = parser.parseFromString(rawXml, "text/xml");
+        let posX = 0;
+        let posY = 0;
+        const atlasBlock = xmlDoc.querySelector('block[type="atlaspos"]');
+        if (atlasBlock) {
+          const xField = atlasBlock.querySelector('field[name="x"]');
+          const yField = atlasBlock.querySelector('field[name="y"]');
+          if (xField) posX = parseInt(xField.textContent, 10) || 0;
+          if (yField) posY = parseInt(yField.textContent, 10) || 0;
+        }
+        
+        //locate desc field
+        const locBlock = xmlDoc.querySelector('block[type="gen_loc_txt"]');
+        if (!locBlock) return { desc: "", x: posX, y: posY };
+        
+        const textField = locBlock.querySelector('field[name="b"]');
+        let desc = textField ? textField.textContent : '';
+        
+        // discover conf entries
+        const configBlocks = xmlDoc.querySelectorAll('block[type="add_to_config"]');
+        const configValues = [];
+        
+        configBlocks.forEach(block => {
+          const valueNode = block.querySelector('value[name="value"]');
+          if (valueNode) {
+            const innerBlockNode = valueNode.querySelector('block');
+            if (innerBlockNode) {
+              let val = '';
+              const valField = innerBlockNode.querySelector('field[name="val"]') || innerBlockNode.querySelector('field[name="v"]');
+              val = valField ? valField.textContent : '';
+              if (val && ((val.startsWith("'") && val.endsWith("'")) || (val.startsWith('"') && val.endsWith('"')))) {
+                val = val.slice(1, -1);
+              }
+              configValues.push(val);
+            }
+          }
+        });
+
+        // fallback
+        if (configValues.length === 0) {
+          const locVarsBlock = xmlDoc.querySelector('block[type="loc_vars"]');
+          if (locVarsBlock) {
+            // Helper function to extract a human-readable snippet from complex structural math blocks
+            const parseExpressionText = (rootNode) => {
+              if (!rootNode) return '';
+              
+              // Check for basic text fields first
+              const field = rootNode.querySelector('field[name="val"]') || rootNode.querySelector('field[name="v"]') || rootNode.querySelector('field[name="var"]');
+              if (field && field.parentNode === rootNode) {
+                return field.textContent;
+              }
+              
+              // Fallbacks for standard dynamic block definitions
+              const type = rootNode.getAttribute('type');
+              if (type === 'is_true') {
+                return parseExpressionText(rootNode.querySelector('value[name="truthy"] > block'));
+              }
+              if (type === 'limit') {
+                return parseExpressionText(rootNode.querySelector('value[name="val"] > block')) || "1";
+              }
+              if (type === 'add') {
+                return "X"; // Placeholder character for calculation previews (e.g. "X Mult")
+              }
+              if (type === 'game_value') {
+                return "X";
+              }
+              
+              // Deep text lookup query loop if nothing matched
+              const anyField = rootNode.querySelector('field');
+              return anyField ? anyField.textContent : '';
+            };
+
+            const returnBlock = locVarsBlock.querySelectorAll('block[type="return_loc_var"]');
+            returnBlock.forEach(rBlock => {
+              const varValueNode = rBlock.querySelector('value[name="var"] > block');
+              if (varValueNode) {
+                let exprText = parseExpressionText(varValueNode);
+                // Clean up expression syntax characters for tidy tooltips
+                exprText = exprText.replace(/[\(\)]/g, '').replace('G.jokers.config.card_limit - G.jokers.cards', 'Slots');
+                if (exprText === 'X') exprText = '1'; // Clean default preview display fallback
+                configValues.push(exprText);
+              }
+            });
+          }
+        }
+        
+        //replace the loc things (like #1#)
+        configValues.forEach((val, idx) => {
+          desc = desc.replaceAll(`#${idx + 1}#`, val);
+        });
+        
+        return { desc: desc, x: posX, y: posY };
+      } catch(e) {
+        console.error("XML Parsing Error: ", e);
+        return { desc: "Error parsing XML layout description.", x: 0, y: 0 };
+      }
+    }
+    return { desc: "", x: 0, y: 0 };
+  }
+
+  function loadRemakeDescriptionsSequential(remakes, callback) {
+    let index = 0;
+
+    function loadNext() {
+      if (index >= remakes.length) {
+        delete window.registerTemplate;
+        callback();
+        return;
+      }
+
+      const t = remakes[index];
+      window.registerTemplate = (data) => {
+        const extracted = extractTemplateDesc(data);
+        
+        t.cachedDesc = extracted.desc;
+        t.x = extracted.x;
+        t.y = extracted.y;
+      };
+
+      const script = document.createElement('script');
+      script.src = `./templates/${t.file}`;
+      
+      script.onload = () => {
+        script.remove();
+        index++;
+        loadNext(); 
+      };
+      
+      script.onerror = () => {
+        console.error(`Failed to execute template file: ${t.file}`);
+        t.cachedDesc = "Failed to load template file.";
+        script.remove();
+        index++;
+        loadNext();
+      };
+
+      document.body.appendChild(script);
+    }
+
+    loadNext();
+  }
+
+  remakesBtn.onclick = () => {
+    remakesModal.style.display = 'block';
+
+    // chgeck if we have already indexed descs once. If so, skip loading
+    const descriptionsCached = VANILLA_REMAKES.every(t => t.hasOwnProperty('cachedDesc'));
+
+    if (descriptionsCached) {
+      renderRemakesUI();
+      return;
+    }
+
+    remakesList.innerHTML = '<div style="color:#aaa; font-family:sans-serif; font-size:14px; grid-column:span 5; padding:12px;">Reading templates...</div>';
+    
+    // trigger load thing once per app load
+    loadRemakeDescriptionsSequential(VANILLA_REMAKES, () => {
+      renderRemakesUI();
+    });
+  };
+
+  function renderRemakesUI() {
+    remakesList.innerHTML = '';
+    let checkboxWrapper = document.getElementById('remakeCheckboxWrapper');
+    if (!checkboxWrapper) {
+      checkboxWrapper = document.createElement('div');
+      checkboxWrapper.id = 'remakeCheckboxWrapper';
+      checkboxWrapper.style.cssText = `
+        display: flex; align-items: center; gap: 6px; margin-bottom: 8px;
+        font-family: sans-serif; font-size: 13px; color: #ccc; user-select: none;
+      `;
+      
+      const checkbox = document.createElement('input');
+      checkbox.type = 'checkbox';
+      checkbox.id = 'remakeDescCheckbox';
+      checkbox.style.cssText = `cursor: pointer; margin: 0;`;
+      
+      const checkboxLabel = document.createElement('label');
+      checkboxLabel.htmlFor = 'remakeDescCheckbox';
+      checkboxLabel.textContent = 'Filter through descriptions';
+      checkboxLabel.style.cssText = `cursor: pointer;`;
+      
+      checkboxWrapper.appendChild(checkbox);
+      checkboxWrapper.appendChild(checkboxLabel);
+      remakesList.parentNode.insertBefore(checkboxWrapper, remakesList);
+    }
+    
+    // search inpt
+    let searchInput = document.getElementById('remakeSearchInput');
+    if (!searchInput) {
+      searchInput = document.createElement('input');
+      searchInput.id = 'remakeSearchInput';
+      searchInput.type = 'text';
+      searchInput.placeholder = 'Search remakes...';
+      searchInput.style.cssText = `
+        width: 100%; padding: 8px; margin-bottom: 6px; border: 1px solid #444;
+        border-radius: 4px; background: #1e1e1e; color: #fff; font-size: 14px;
+        box-sizing: border-box; outline: none;
+      `;
+      searchInput.addEventListener('keydown', e => e.stopPropagation());
+      searchInput.addEventListener('keyup', e => e.stopPropagation());
+      remakesList.parentNode.insertBefore(searchInput, remakesList);
+    }
+    searchInput.value = '';
+    searchInput.style.display = 'block';
+
+    // result num
+    let counterLabel = document.getElementById('remakeCounterLabel');
+    if (!counterLabel) {
+      counterLabel = document.createElement('div');
+      counterLabel.id = 'remakeCounterLabel';
+      counterLabel.style.cssText = `
+        font-family: sans-serif; font-size: 12px; color: #888; margin-bottom: 12px; padding-left: 2px;
+      `;
+      remakesList.parentNode.insertBefore(counterLabel, remakesList);
+    }
+
+    remakesList.style.cssText = `
+      max-height: 400px;
+      min-width: 600px;
+      overflow-y: auto;
+      display: grid;
+      grid-template-columns: repeat(5, 1fr);
+      gap: 12px;
+      padding: 8px 6px 8px 2px;
+      box-sizing: border-box;
+    `;
+
+    let globalTooltip = document.getElementById('remakeGlobalTooltip');
+    if (!globalTooltip) {
+      globalTooltip = document.createElement('div');
+      globalTooltip.id = 'remakeGlobalTooltip';
+      document.body.appendChild(globalTooltip);
+    }
+    globalTooltip.style.cssText = `
+      display: none; position: fixed; background: #ffffff; border: 2px solid #cdcdcd;
+      border-radius: 6px; padding: 8px 12px; z-index: 10000; pointer-events: none;
+      box-shadow: 0 4px 15px rgba(0,0,0,0.15); font-family: monospace, sans-serif;
+      font-size: 13px; line-height: 1.4; color: #333333;
+    `;
+
+    const cardsTrack = [];
+    const BALATRO_FALLBACK_PALETTE = {
+      red: '#ef4747', mult: '#fe5f55', blue: '#4f63cc', chips: '#00a2ff',
+      green: '#76ae55', money: '#f3b954', gold: '#e1b333', attention: '#e1b333',
+      purple: '#8847cf', orange: '#f7934c'
+    };
+
+    VANILLA_REMAKES.forEach(t => {
+      const card = document.createElement('div');
+      card.style.cssText = `
+        background: #232323; border: 2px solid #3c3c3c; border-radius: 6px;
+        padding: 12px 8px; display: flex; flex-direction: column; align-items: center;
+        position: relative; cursor: pointer; transition: transform 0.1s ease; user-select: none;
+      `;
+      
+      const spriteWrapper = document.createElement('div');
+      spriteWrapper.style.cssText = `width: 71px; height: 95px; overflow: hidden; position: relative; background: #151515; border-radius: 4px; margin-bottom: 8px;`;
+
+      const img = document.createElement('img');
+      img.src = window.VANILLA_SPRITESHEET || 'data:image/png;base64,';
+      img.style.cssText = `position: absolute; left: -${(t.x || 0) * 71}px; top: -${(t.y || 0) * 95}px; image-rendering: pixelated;`;
+      spriteWrapper.appendChild(img);
+
+      const label = document.createElement('div');
+      label.textContent = t.name;
+      label.style.cssText = `color: #ffffff; font-weight: bold; font-size: 12px; text-align: center; text-overflow: ellipsis; width: 100%; overflow: hidden;`;
+
+      card.appendChild(spriteWrapper);
+      card.appendChild(label);
+
+      card.onmouseenter = () => {
+        card.style.transform = 'scale(1.03)';
+        card.style.borderColor = '#ff4444';
+        card.style.background = '#2d2d2d';
+        
+        globalTooltip.innerHTML = '';
+        const descValue = t.cachedDesc || "No description provided.";
+        
+        try {
+          if (typeof tsLocTextToLines === 'function') {
+            const lines = tsLocTextToLines(descValue);
+            lines.forEach(lineSegs => {
+              const lineDiv = document.createElement('div');
+              lineDiv.style.cssText = 'display: flex; flex-wrap: wrap; gap: 2px; align-items: center; min-height: 18px;';
+              
+              lineSegs.forEach(seg => {
+                const span = document.createElement('span');
+                span.textContent = seg.text || '';
+                let style = 'white-space: pre-wrap; ';
+                if (seg.tags) {
+                  if (seg.tags.C) {
+                    let colorHex = BALATRO_FALLBACK_PALETTE[seg.tags.C] || '#333333';
+                    const customColor = (typeof TEXT_STYLE_COLOURS !== 'undefined' && TEXT_STYLE_COLOURS.find(cc => cc.key === seg.tags.C));
+                    if (customColor) colorHex = customColor.hex;
+                    style += `color:${colorHex}; font-weight: bold;`;
+                  }
+                  if (seg.tags.X) {
+                    let bgHex = BALATRO_FALLBACK_PALETTE[seg.tags.X] || '#333333';
+                    style += `background:${bgHex}; color:#fff; padding:1px 4px; border-radius:3px; display: inline-block;`;
+                  }
+                }
+                span.style.cssText = style;
+                lineDiv.appendChild(span);
+              });
+              globalTooltip.appendChild(lineDiv);
+            });
+          }
+        } catch (err) {
+          globalTooltip.textContent = descValue;
+        }
+        globalTooltip.style.display = 'block';
+      };
+
+      card.onmousemove = (e) => {
+        globalTooltip.style.left = (e.clientX + 15) + 'px';
+        globalTooltip.style.top = (e.clientY + 15) + 'px';
+      };
+
+      card.onmouseleave = () => {
+        card.style.transform = 'none';
+        card.style.borderColor = '#3c3c3c';
+        card.style.background = '#232323';
+        globalTooltip.style.display = 'none';
+      };
+
+      card.onclick = () => {
+        globalTooltip.style.display = 'none';
+        
+        window.registerTemplate = (data) => {
+          if (data && data.xml) {
+            try {
+              let rawXml = data.xml;
+              if (data.isBase64 || !rawXml.trim().startsWith('<')) {
+                rawXml = decodeURIComponent(escape(atob(data.xml)));
+              }
+              const xmlDom = Blockly.utils.xml.textToDom(rawXml);
+              const block = Blockly.Xml.domToBlock(xmlDom, window.workspace);
+              if (block) {
+                block.moveTo(new Blockly.utils.Coordinate(150, 150)); 
+                block.select();
+              }
+              remakesModal.style.display = 'none';
+            } catch(err) {
+              console.error(err);
+            }
+          }
+          clickScript.remove();
+          delete window.registerTemplate;
+        };
+
+        const clickScript = document.createElement('script');
+        clickScript.src = `./templates/${t.file}`;
+        document.body.appendChild(clickScript);
+      };
+      
+      remakesList.appendChild(card);
+      
+      // store desc vals
+      cardsTrack.push({ 
+        element: card, 
+        name: t.name.toLowerCase(), 
+        desc: (t.cachedDesc || '').toLowerCase() 
+      });
+    });
+
+    // filtering/counting logic
+    const updateSearchFilter = () => {
+      const query = searchInput.value.trim().toLowerCase();
+      const searchDescriptions = document.getElementById('remakeDescCheckbox').checked;
+      let visibleCount = 0;
+
+      cardsTrack.forEach(item => {
+        let isMatch = false;
+        if (searchDescriptions) {
+          // Match text against name OR layout descriptions
+          isMatch = item.name.includes(query) || item.desc.includes(query);
+        } else {
+          // Standard filter matching against names only
+          isMatch = item.name.includes(query);
+        }
+        if (isMatch) {
+          item.element.style.display = 'flex';
+          visibleCount++;
+        } else {
+          item.element.style.display = 'none';
+        }
+      });
+      //update text
+      counterLabel.textContent = `Showing ${visibleCount} of ${cardsTrack.length} remakes`;
+    };
+
+    // attcah updates
+    searchInput.oninput = updateSearchFilter;
+    document.getElementById('remakeDescCheckbox').onchange = updateSearchFilter;
+
+    // trigger cacl loop
+    updateSearchFilter();
+
+    setTimeout(() => { searchInput.focus(); }, 50);
+  }
+  closeRemakes.onclick = () => remakesModal.style.display = 'none';
 
   // === Variable Manager ===
   const manageVarsBtn = document.getElementById("manageVarsBtn");
@@ -1411,3 +2059,625 @@ window.addEventListener("load", () => {
   window.addEventListener("resize", updateOptionsBtnPosition);
   updateOptionsBtnPosition();
 });
+
+// the text styling modal
+const TEXT_STYLE_COLOURS = [
+  { key: 'mult', label: 'Mult', hex: '#FE5F55' },
+  { key: 'chips', label: 'Chips', hex: '#009dff' },
+  { key: 'money', label: 'Money', hex: '#f3b958' },
+  { key: 'attention', label: 'Attention', hex: '#ff9a00' },
+  { key: 'blue', label: 'Blue', hex: '#009dff' },
+  { key: 'red', label: 'Red', hex: '#FE5F55' },
+  { key: 'green', label: 'Green', hex: '#4BC292' },
+  { key: 'orange', label: 'Orange', hex: '#fda200' },
+  { key: 'gold', label: 'Gold', hex: '#eac058' },
+  { key: 'purple', label: 'Purple', hex: '#8867a5' },
+  { key: 'default', label: 'Default', hex: '#4f6367' },
+  { key: 'white', label: 'White', hex: '#ffffff' },
+  { key: 'inactive', label: 'Inactive', hex: '#888888' },
+  { key: 'tarot', label: 'Tarot', hex: '#a782d1' },
+  { key: 'planet', label: 'Planet', hex: '#13afce' },
+  { key: 'spectral', label: 'Spectral', hex: '#4584fa' },
+  { key: 'common', label: 'Common', hex: '#009dff' },
+  { key: 'uncommon', label: 'Uncommon', hex: '#4BC292' },
+  { key: 'rare', label: 'Rare', hex: '#FE5F55' },
+  { key: 'legendary', label: 'Legendary', hex: '#b26cbb' },
+  { key: 'enhanced', label: 'Enhanced', hex: '#8389DD' },
+  { key: 'hearts', label: 'Hearts', hex: '#FE5F55' },
+  { key: 'diamonds', label: 'Diamonds', hex: '#FE5F55' },
+  { key: 'spades', label: 'Spades', hex: '#374649' },
+  { key: 'clubs', label: 'Clubs', hex: '#424e54' },
+  { key: 'hearts_hc', label: 'Hearts (HC)', hex: '#f03464' },
+  { key: 'diamonds_hc', label: 'Diamonds (HC)', hex: '#f06b3f' },
+  { key: 'spades_hc', label: 'Spades (HC)', hex: '#403995' },
+  { key: 'clubs_hc', label: 'Clubs (HC)', hex: '#235955' },
+  { key: 'hearts_alt', label: 'Hearts (Alt)', hex: '#f83b2f' },
+  { key: 'diamonds_alt', label: 'Diamonds (Alt)', hex: '#e29000' },
+  { key: 'spades_alt', label: 'Spades (Alt)', hex: '#4f31b9' },
+  { key: 'clubs_alt', label: 'Clubs (Alt)', hex: '#008ee6' },
+];
+const TEXT_STYLE_MODES = [
+  { key: 'C', label: 'Color', kind: 'palette' },
+  { key: 'X', label: 'BG Color', kind: 'palette' },
+  { key: 's', label: 'Scale', kind: 'value', placeholder: 'e.g. 0.8' },
+  { key: 'u', label: 'Underline', kind: 'palette' },
+  { key: 'st', label: 'Strike', kind: 'palette' },
+  { key: 'f', label: 'Font', kind: 'value', placeholder: 'e.g. 1' },
+  { key: 'E', label: 'Motion', kind: 'value', placeholder: '1 or 2' },
+];
+
+// ---- encode/decode between segment-lines and the loc_txt string ----
+// segment: { tags: {C:'mult', X:'gold', ...}, text: '...' }
+
+function tsBuildTagString(tags) {
+  const parts = [];
+  ['C', 'X', 'V', 'B', 's', 'u', 'st', 'f', 'E'].forEach(k => {
+    if (tags[k]) parts.push(`${k}:${tags[k]}`);
+  });
+  return parts.join(',');
+}
+
+function tsSegmentsToLocText(lines) {
+  return lines.map(line => {
+    return line.map((seg, idx) => {
+      const tagStr = Object.entries(seg.tags || {})
+        .map(([k, v]) => `${k}:${v}`)
+        .join(',');
+      
+      if (tagStr) {
+        const nextSeg = line[idx + 1];
+        // Balatro conventions require a closing '{}' if the next chunk is unstyled, 
+        // OR if this styled chunk ends right at a variable expression sequence like '#2#'
+        const isNextUnstyled = nextSeg && (!nextSeg.tags || Object.keys(nextSeg.tags).length === 0);
+        const endsInVariable = seg.text.trim().endsWith('#');
+        
+        const needsReset = isNextUnstyled || endsInVariable || !nextSeg;
+        return `{${tagStr}}${seg.text}${needsReset ? '{}' : ''}`;
+      }
+      return seg.text;
+    }).join('');
+  }).join('\\n');
+}
+
+function tsLocTextToLines(raw) {
+  if (!raw) return [[{ tags: {}, text: '' }]];
+  
+  const lineStrs = raw.split(/\r?\n|\\n/);
+  return lineStrs.map(lineStr => {
+    const segs = [];
+    // Matches BOTH filled tag markers like {C:red} AND empty style-reset sequences like {}
+    const re = /\{([^}]*)\}([^{]*)/g;
+    let lastIdx = 0;
+    let m;
+
+    while ((m = re.exec(lineStr)) !== null) {
+      // Capture any unstyled plain text leading up to this tag sequence
+      if (m.index > lastIdx) {
+        const plainText = lineStr.slice(lastIdx, m.index);
+        segs.push({ tags: {}, text: plainText });
+      }
+
+      const tags = {};
+      const tagContent = m[1].trim();
+      
+      // If the bracket has content (e.g., C:red), parse its styles
+      if (tagContent) {
+        tagContent.split(',').forEach(pair => {
+          const [k, v] = pair.split(':');
+          if (k && v !== undefined) tags[k.trim()] = v.trim();
+        });
+      }
+
+      let segmentText = m[2] || '';
+      
+      // Only push the segment if tags exist or text content isn't empty
+      if (Object.keys(tags).length > 0 || segmentText) {
+        segs.push({ tags, text: segmentText });
+      }
+      
+      lastIdx = re.lastIndex;
+    }
+    
+    // Catch remaining trailing unstyled text at the end of the line
+    if (lastIdx < lineStr.length) {
+      segs.push({ tags: {}, text: lineStr.slice(lastIdx) });
+    }
+
+    return segs.length ? segs : [{ tags: {}, text: '' }];
+  });
+}
+
+// ---- modal DOM ----
+
+function ensureTextStyleModalDom() {
+  if (document.getElementById('textStyleModal')) return;
+
+  const overlay = document.createElement('div');
+  overlay.id = 'textStyleModal';
+  overlay.style.cssText = `
+    display:none;
+    position:fixed;
+    top:0; left:0; right:0; bottom:0;
+    background:rgba(0,0,0,0.55);
+    z-index:200;
+    align-items:center;
+    justify-content:center;
+  `;
+
+  overlay.innerHTML = `
+    <div id="tsModalBox" style="
+      background:#222;
+      color:#fff;
+      width:680px;
+      max-width:94vw;
+      max-height:88vh;
+      border-radius:10px;
+      box-shadow:0 0 20px rgba(0,0,0,0.6);
+      display:flex;
+      flex-direction:column;
+      overflow:hidden;
+      font-family:sans-serif;
+    ">
+      <div style="padding:14px 16px; border-bottom:1px solid #444; display:flex; justify-content:space-between; align-items:center;">
+        <h3 style="margin:0;font-size:16px;">Text Styler</h3>
+        <span id="tsCloseX" style="cursor:pointer;color:#aaa;font-size:18px;line-height:1;">&#10005;</span>
+      </div>
+
+      <div style="display:flex; flex:1; min-height:0;">
+        <div id="tsPaletteCol" style="
+          width:170px;
+          flex-shrink:0;
+          border-right:1px solid #444;
+          display:flex;
+          flex-direction:column;
+          min-height:0;
+        ">
+          <div id="tsModeTabs" style="
+            display:flex;
+            flex-wrap:wrap;
+            gap:3px;
+            padding:8px;
+            border-bottom:1px solid #444;
+            flex-shrink:0;
+          "></div>
+          <div id="tsModeValueRow" style="display:none; padding:8px; border-bottom:1px solid #444;">
+            <input id="tsModeValueInput" type="text" placeholder="" style="
+              width:100%;
+              padding:6px;
+              border-radius:4px;
+              border:1px solid #555;
+              background:#111;
+              color:#fff;
+              box-sizing:border-box;
+              font-size:12px;
+            ">
+          </div>
+          <div id="tsPaletteSwatches" style="
+            flex:1;
+            overflow-y:auto;
+            padding:8px;
+            display:grid;
+            grid-template-columns:1fr 1fr;
+            gap:6px;
+            align-content:start;
+          "></div>
+        </div>
+
+        <div id="tsLinesCol" style="
+          flex:1;
+          min-width:0;
+          display:flex;
+          flex-direction:column;
+          padding:12px;
+          overflow-y:auto;
+        ">
+          <div style="font-size:11px;color:#999;margin-bottom:8px;">
+            Currently typing in: <span id="tsActiveSwatchLabel" style="font-weight:bold;color:#fff;">Default</span>
+          </div>
+          <div id="tsLinesList" style="display:flex; flex-direction:column; gap:6px;"></div>
+          <button id="tsAddLineBtn" style="
+            margin-top:8px;
+            align-self:flex-start;
+            background:#2196F3;
+            color:#fff;
+            border:none;
+            border-radius:5px;
+            padding:6px 12px;
+            cursor:pointer;
+            font-size:13px;
+          ">+ Add Line</button>
+
+          <div style="margin-top:14px;">
+            <div style="font-size:11px;color:#999;margin-bottom:4px;">Preview</div>
+            <div id="tsPreviewBox" style="
+              background:#fff;
+              color:#222;
+              border-radius:6px;
+              padding:10px 12px;
+              font-size:14px;
+              line-height:1.5;
+              min-height:40px;
+            "></div>
+          </div>
+        </div>
+      </div>
+
+      <div style="padding:12px 16px; border-top:1px solid #444; display:flex; justify-content:space-between;">
+        <button id="tsCancelBtn" style="
+          background:#555;
+          color:#fff;
+          border:none;
+          border-radius:5px;
+          padding:8px 18px;
+          cursor:pointer;
+        ">Cancel</button>
+        <button id="tsSaveBtn" style="
+          background:#4caf50;
+          color:#fff;
+          border:none;
+          border-radius:5px;
+          padding:8px 18px;
+          cursor:pointer;
+          font-weight:bold;
+        ">Save</button>
+      </div>
+    </div>
+  `;
+
+  document.body.appendChild(overlay);
+
+  overlay.addEventListener('click', (e) => {
+    if (e.target === overlay) closeTextStyleModal();
+  });
+  document.getElementById('tsCloseX').onclick = closeTextStyleModal;
+  document.getElementById('tsCancelBtn').onclick = closeTextStyleModal;
+}
+
+window.tsState = {
+  lines: [[{ tags: {}, text: '' }]],
+  activeMode: 'C', // which tab the palette is currently showing
+  modeValues: {}, // e.g. { C: 'attention', X: 'mult' } - every mode that's currently turned on
+  targetField: null,
+};
+
+// X and B fight over the background, C and V fight over the text color.
+// turning one of these on switches off the other in its group.
+const TEXT_STYLE_EXCLUSIVE_GROUPS = [['C', 'V'], ['X', 'B']];
+
+function tsClearConflicts(modeKey) {
+  const group = TEXT_STYLE_EXCLUSIVE_GROUPS.find(g => g.includes(modeKey));
+  if (!group) return;
+  group.forEach(k => { if (k !== modeKey) delete window.tsState.modeValues[k]; });
+}
+
+function tsRenderModeTabs() {
+  const wrap = document.getElementById('tsModeTabs');
+  wrap.innerHTML = '';
+  TEXT_STYLE_MODES.forEach(mode => {
+    const btn = document.createElement('button');
+    btn.dataset.mode = mode.key;
+    const viewing = window.tsState.activeMode === mode.key;
+    const isSet = !!window.tsState.modeValues[mode.key];
+    btn.style.cssText = `
+      border:none;
+      border-radius:4px;
+      padding:5px 8px;
+      font-size:11px;
+      cursor:pointer;
+      background:${viewing ? '#2196F3' : '#333'};
+      color:#fff;
+      position:relative;
+    `;
+    btn.textContent = mode.label;
+    if (isSet) {
+      const dot = document.createElement('span');
+      dot.style.cssText = 'display:inline-block;width:6px;height:6px;border-radius:50%;background:#4caf50;margin-left:5px;';
+      btn.appendChild(dot);
+    }
+    btn.onclick = () => {
+      window.tsState.activeMode = mode.key;
+      tsRenderModeTabs();
+      tsRenderModeValueRow();
+      tsRenderPalette();
+      tsUpdateActiveLabel();
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+function tsRenderModeValueRow() {
+  const mode = TEXT_STYLE_MODES.find(m => m.key === window.tsState.activeMode);
+  const row = document.getElementById('tsModeValueRow');
+  const input = document.getElementById('tsModeValueInput');
+  if (mode && mode.kind === 'value') {
+    row.style.display = 'block';
+    input.placeholder = mode.placeholder || '';
+    input.value = window.tsState.modeValues[mode.key] || '';
+    input.oninput = () => {
+      if (input.value) {
+        window.tsState.modeValues[mode.key] = input.value;
+      } else {
+        delete window.tsState.modeValues[mode.key];
+      }
+      tsRenderModeTabs();
+      tsUpdateActiveLabel();
+    };
+  } else {
+    row.style.display = 'none';
+  }
+}
+
+function tsRenderPalette() {
+  const mode = TEXT_STYLE_MODES.find(m => m.key === window.tsState.activeMode);
+  const grid = document.getElementById('tsPaletteSwatches');
+  grid.innerHTML = '';
+
+  if (!mode || mode.kind === 'value') {
+    grid.style.display = 'none';
+    return;
+  }
+  grid.style.display = 'grid';
+
+  const currentValue = window.tsState.modeValues[mode.key] || null;
+
+  // reset swatch always first
+  const resetCell = document.createElement('div');
+  resetCell.style.cssText = `
+    display:flex; flex-direction:column; align-items:center; gap:3px;
+    cursor:pointer; padding:4px; border-radius:6px;
+    border:2px solid ${currentValue === null ? '#fff' : 'transparent'};
+  `;
+  resetCell.innerHTML = `
+    <div style="
+      width:32px;height:32px;border-radius:6px;
+      background:repeating-conic-gradient(#666 0% 25%, #333 0% 50%) 50% / 10px 10px;
+      border:1px solid #555;
+    "></div>
+    <span style="font-size:9px;color:#ccc;text-align:center;">Reset</span>
+  `;
+  resetCell.onclick = () => {
+    delete window.tsState.modeValues[mode.key];
+    tsRenderModeTabs();
+    tsRenderPalette();
+    tsUpdateActiveLabel();
+  };
+  grid.appendChild(resetCell);
+
+  TEXT_STYLE_COLOURS.forEach(c => {
+    const cell = document.createElement('div');
+    const active = currentValue === c.key;
+    cell.style.cssText = `
+      display:flex; flex-direction:column; align-items:center; gap:3px;
+      cursor:pointer; padding:4px; border-radius:6px;
+      border:2px solid ${active ? '#fff' : 'transparent'};
+    `;
+    cell.innerHTML = `
+      <div style="width:32px;height:32px;border-radius:6px;background:${c.hex};border:1px solid #0003;"></div>
+      <span style="font-size:9px;color:#ccc;text-align:center;line-height:1.1;">${c.label}</span>
+    `;
+    cell.onclick = () => {
+      window.tsState.modeValues[mode.key] = c.key;
+      tsClearConflicts(mode.key);
+      tsRenderModeTabs();
+      tsRenderPalette();
+      tsUpdateActiveLabel();
+    };
+    grid.appendChild(cell);
+  });
+}
+
+function tsUpdateActiveLabel() {
+  const label = document.getElementById('tsActiveSwatchLabel');
+  const entries = Object.entries(window.tsState.modeValues);
+  if (!entries.length) {
+    label.textContent = 'Default';
+    return;
+  }
+  label.textContent = entries.map(([key, val]) => {
+    const mode = TEXT_STYLE_MODES.find(m => m.key === key);
+    const modeLabel = mode ? mode.label : key;
+    if (mode && mode.kind === 'value') return `${modeLabel}: ${val}`;
+    const c = TEXT_STYLE_COLOURS.find(col => col.key.toLowerCase() === (val || '').toLowerCase());
+    return `${modeLabel}: ${c ? c.label : val}`;
+  }).join(', ');
+}
+
+function tsCurrentTags() {
+  return { ...window.tsState.modeValues };
+}
+
+function tsTagsEqual(a, b) {
+  const ak = Object.keys(a || {});
+  const bk = Object.keys(b || {});
+  if (ak.length !== bk.length) return false;
+  return ak.every(k => a[k] === b[k]);
+}
+
+function tsRenderLines() {
+  const list = document.getElementById('tsLinesList');
+  list.innerHTML = '';
+
+  window.tsState.lines.forEach((segs, lineIdx) => {
+    const row = document.createElement('div');
+    row.style.cssText = 'display:flex; align-items:center; gap:6px;';
+
+    const lineLabel = document.createElement('span');
+    lineLabel.textContent = `${lineIdx + 1}`;
+    lineLabel.style.cssText = 'width:18px;color:#777;font-size:11px;text-align:right;flex-shrink:0;';
+
+    const input = document.createElement('input');
+    input.type = 'text';
+    input.value = segs.map(s => s.text).join('');
+    input.dataset.lineIdx = lineIdx;
+    input.style.cssText = `
+      flex:1;
+      padding:7px 8px;
+      border-radius:4px;
+      border:1px solid #555;
+      background:#111;
+      color:#fff;
+      font-size:13px;
+      box-sizing:border-box;
+    `;
+
+    // Tracks character-level metadata by calculating a structural diff 
+    // between old and new text states to prevent whole-line styling overrides.
+    input.addEventListener('input', (e) => {
+      const newText = e.target.value;
+      const oldSegs = window.tsState.lines[lineIdx];
+      const oldText = oldSegs.map(s => s.text).join('');
+      const currentTags = tsCurrentTags();
+
+      //explode
+      const chars = [];
+      oldSegs.forEach(seg => {
+        for (let i = 0; i < seg.text.length; i++) {
+          chars.push({ char: seg.text[i], tags: seg.tags });
+        }
+      });
+
+      // identify
+      let start = 0;
+      while (start < oldText.length && start < newText.length && oldText[start] === newText[start]) {
+        start++;
+      }
+
+      // identify
+      let oldEnd = oldText.length;
+      let newEnd = newText.length;
+      while (oldEnd > start && newEnd > start && oldText[oldEnd - 1] === newText[newEnd - 1]) {
+        oldEnd--;
+        newEnd--;
+      }
+
+      // create new char entries
+      const addedText = newText.slice(start, newEnd);
+      const addedChars = [];
+      for (let i = 0; i < addedText.length; i++) {
+        addedChars.push({ char: addedText[i], tags: { ...currentTags } });
+      }
+
+      // spslce
+      chars.splice(start, oldEnd - start, ...addedChars);
+
+      // comopress
+      const newSegs = [];
+      if (chars.length === 0) {
+        newSegs.push({ tags: {}, text: '' });
+      } else {
+        let currentSeg = { tags: chars[0].tags, text: chars[0].char };
+        for (let i = 1; i < chars.length; i++) {
+          if (tsTagsEqual(chars[i].tags, currentSeg.tags)) {
+            currentSeg.text += chars[i].char;
+          } else {
+            newSegs.push(currentSeg);
+            currentSeg = { tags: chars[i].tags, text: chars[i].char };
+          }
+        }
+        newSegs.push(currentSeg);
+      }
+
+      window.tsState.lines[lineIdx] = newSegs;
+      tsUpdatePreview();
+    });
+
+    const delBtn = document.createElement('span');
+    delBtn.textContent = '\u{1F5D1}';
+    delBtn.title = 'Delete line';
+    delBtn.style.cssText = 'cursor:pointer; opacity:0.6; flex-shrink:0; font-size:13px;';
+    delBtn.onmouseenter = () => delBtn.style.opacity = '1';
+    delBtn.onmouseleave = () => delBtn.style.opacity = '0.6';
+    delBtn.onclick = () => {
+      if (window.tsState.lines.length <= 1) {
+        window.tsState.lines = [[{ tags: {}, text: '' }]];
+      } else {
+        window.tsState.lines.splice(lineIdx, 1);
+      }
+      tsRenderLines();
+      tsUpdatePreview();
+    };
+
+    row.appendChild(lineLabel);
+    row.appendChild(input);
+    row.appendChild(delBtn);
+    list.appendChild(row);
+  });
+}
+
+function tsAddLine() {
+  window.tsState.lines.push([{ tags: {}, text: '' }]);
+  tsRenderLines();
+  tsUpdatePreview();
+  const inputs = document.querySelectorAll('#tsLinesList input');
+  if (inputs.length) inputs[inputs.length - 1].focus();
+}
+
+function tsColourForTags(tags) {
+  if (tags.C) {
+    const c = TEXT_STYLE_COLOURS.find(cc => cc.key === tags.C);
+    return c ? c.hex : '#4f6367';
+  }
+  return '#4f6367';
+}
+
+function tsUpdatePreview() {
+  const box = document.getElementById('tsPreviewBox');
+  box.innerHTML = '';
+  window.tsState.lines.forEach((segs) => {
+    const lineDiv = document.createElement('div');
+    segs.forEach(seg => {
+      if (!seg.text) return;
+      const span = document.createElement('span');
+      span.textContent = seg.text;
+      let style = `color:${tsColourForTags(seg.tags)};`;
+      if (seg.tags.X) {
+        const bg = TEXT_STYLE_COLOURS.find(cc => cc.key === seg.tags.X);
+        if (bg) {
+          style += `background:${bg.hex};padding:1px 4px;border-radius:3px;`;
+          if (!seg.tags.C) {
+            style += `color:#4f6367;`;
+          }
+        }
+      }
+      if (seg.tags.u) style += 'text-decoration:underline;';
+      if (seg.tags.st) style += 'text-decoration:line-through;';
+      if (seg.tags.s) style += `font-size:${parseFloat(seg.tags.s) * 14}px;`;
+      span.style.cssText = style;
+      lineDiv.appendChild(span);
+    });
+    if (!segs.some(s => s.text)) lineDiv.innerHTML = '&nbsp;';
+    box.appendChild(lineDiv);
+  });
+}
+
+function openTextStyleModal(textField) {
+  ensureTextStyleModalDom();
+  window.tsState.targetField = textField;
+  window.tsState.activeMode = 'C';
+  window.tsState.activeColorKey = null;
+  window.tsState.activeModeValue = '';
+  window.tsState.lines = tsLocTextToLines(textField.getValue() || '');
+
+  tsRenderModeTabs();
+  tsRenderModeValueRow();
+  tsRenderPalette();
+  tsUpdateActiveLabel();
+  tsRenderLines();
+  tsUpdatePreview();
+
+  document.getElementById('textStyleModal').style.display = 'flex';
+
+  document.getElementById('tsAddLineBtn').onclick = tsAddLine;
+  document.getElementById('tsSaveBtn').onclick = () => {
+    const result = tsSegmentsToLocText(window.tsState.lines);
+    if (window.tsState.targetField) {
+      window.tsState.targetField.setValue(result);
+    }
+    closeTextStyleModal();
+  };
+}
+
+function closeTextStyleModal() {
+  const overlay = document.getElementById('textStyleModal');
+  if (overlay) overlay.style.display = 'none';
+}

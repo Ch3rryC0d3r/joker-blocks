@@ -116,8 +116,8 @@ BLOCK_DEFS.forEach(def => {
       json.previousStatement = null;
       json.nextStatement = null;
     } else {
-      json.previousStatement = null;
-      json.nextStatement = null;
+      json.previousStatement = def.previousStatement !== undefined ? def.previousStatement : null;
+      json.nextStatement = def.nextStatement !== undefined ? def.nextStatement : null;
     }
 
   jsonBlocks.push(json);
@@ -208,6 +208,23 @@ Object.keys(Blockly.Blocks).forEach(blockType => {
         };
     }
 });
+
+//text styyler button after the text field
+(function() {
+  const origLocTxtInit = Blockly.Blocks['gen_loc_txt'].init;
+  Blockly.Blocks['gen_loc_txt'].init = function() {
+    origLocTxtInit.call(this);
+    const textField = this.getField('b');
+    if (!textField) return;
+    const input = this.inputList.find(inp => inp.fieldRow.includes(textField));
+    if (!input) return;
+    const dotsIcon = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24'><rect width='24' height='24' rx='5' fill='%232196F3'/><circle cx='7' cy='12' r='1.8' fill='white'/><circle cx='12' cy='12' r='1.8' fill='white'/><circle cx='17' cy='12' r='1.8' fill='white'/></svg>";
+    const block = this;
+    input.appendField(new Blockly.FieldImage(dotsIcon, 20, 20, 'Open Text Styler', function() {
+      openTextStyleModal(block.getField('b'));
+    }), 'tsOpenBtn');
+  };
+})();
 
 Blockly.Blocks['givex'].init = function() {
   this.setColour('#c47c2a');
@@ -341,19 +358,6 @@ Blockly.Blocks['special_operation'].init = function() {
   this.setOutput(true, 'Number');
   this.setInputsInline(true);
   this.setTooltip('Performs a mathematical operation (Floor, Ceiling, etc.) on a value.');
-};
-
-Blockly.Blocks['localize'].init = function() {
-  this.setColour('#4079aa');
-  this.setOutput(true, 'String');
-
-  this.appendDummyInput()
-      .appendField('localize')      
-
-  this.appendValueInput('input')
-      .setCheck(null);
-
-  this.setInputsInline(true);
 };
 
 Blockly.Blocks['free_rerolls'].init = function() {
@@ -620,7 +624,7 @@ Blockly.Blocks['joker_amt'].init = function() {
       .appendField('held')
       
   this.setInputsInline(true);
-  this.setTooltip('Calculates how many cards of the given `id` is currently held. (e.g., "j_joker")');
+  this.setTooltip('Calculates how many jokers of the given `id` is currently held.');
 };
 
 Blockly.Blocks['if_else'].init = function() {
@@ -659,7 +663,7 @@ Blockly.Blocks['card_amt'].init = function() {
       
       
   this.setInputsInline(true);
-  this.setTooltip('Calculates how many jokers of the given `id` is currently held.');
+  this.setTooltip('Returns how much of the selected card type is currently in possession/held');
 };
 
 Blockly.Blocks['change_sfreq'].init = function() {
@@ -681,9 +685,9 @@ Blockly.Blocks['change_sfreq'].init = function() {
       .appendField('is present')
 	  
   this.setInputsInline(true);
-  this.setPreviousStatement(false, null);
+  this.setPreviousStatement(true, null);
   this.setTooltip('Changes the minimum number of cards required to make Straights/Flushes when a card with the given id is present. The ID musn\'t contain the mod prefix, this is automatic. This block can be put anywhere.');
-  this.setNextStatement(false, null);
+  this.setNextStatement(true, null);
 };
 
 Blockly.Blocks['hooks_shortcut'].init = function() {
@@ -699,10 +703,15 @@ Blockly.Blocks['hooks_shortcut'].init = function() {
       .appendField('is present')
 	  
   this.setInputsInline(true);
-  this.setPreviousStatement(false, null);
+  this.setPreviousStatement(true, null);
   this.setTooltip('Straights will be able to be made with gaps of 1 rank, Shortcut uses this. The ID musn\'t contain the mod prefix, this is automatic. This block can be put anywhere.');
-  this.setNextStatement(false, null);
+  this.setNextStatement(true, null);
 };
+
+/*Blockly.Blocks['mod_image'].init = function() {
+  this.setPreviousStatement(false, null);
+  this.setNextStatement(false, null);
+};*/
 
 Blockly.Blocks['accfc'].init = function() {
   this.setColour('#a18de5');
@@ -717,9 +726,9 @@ Blockly.Blocks['accfc'].init = function() {
       .appendField('is present')
 	  
   this.setInputsInline(true);
-  this.setPreviousStatement(false, null);
+  this.setPreviousStatement(true, null);
   this.setTooltip('All cards will be considered face cards, similar to how Pareidolia does this. The ID musn\'t contain the mod prefix, this is automatic. This block can be put anywhere.');
-  this.setNextStatement(false, null);
+  this.setNextStatement(true, null);
 };
 
 Blockly.Blocks['return'].init = function() {
@@ -753,6 +762,37 @@ Blockly.Blocks['draw_cards'].init = function() {
   this.setTooltip('Draws the specified amount of cards to hand');
 };
 
+Blockly.Blocks['slice_joker'].init = function() {
+  this.setColour('#e84141');
+  
+  this.appendValueInput('idx')
+      .setCheck(null)
+      .appendField('Slice Joker at Index:');
+  
+  this.appendStatementInput('body1')
+      .setCheck(null)
+      .appendField('During slice event do:');
+      
+  this.appendStatementInput('body2')
+      .setCheck(null)
+      .appendField('After slice event do:');
+  
+  this.setPreviousStatement(true, null);
+  this.setNextStatement(true, null);
+  this.setTooltip('Slices a joker. The first section runs exactly when the joker dissolves. The second section runs immediately after.');
+};
+
+Blockly.Blocks['text_value'].onchange = function() {
+  if (!this.workspace) return;
+  const val = this.getFieldValue('val');
+  /*if (val === 'sliced_card') {
+      this.setOutput(true, ['String', 'Object', 'Card', null]);
+  } else {
+      this.setOutput(true, 'String');
+  }*/
+  this.setOutput(true, 'String');
+};
+
 Blockly.Blocks['cards_stuff'].init = function() {
   this.setColour('#4079aa');
   this.setOutput(true, 'Object');
@@ -770,7 +810,7 @@ Blockly.Blocks['cards_stuff'].init = function() {
       .appendField(new Blockly.FieldDropdown([
         ['Playing Cards [Hand]','G.hand.cards'],
         ['Playing Cards [Play]','G.play.cards'], 
-        ['Jokers','G.joker.cards'], 
+        ['Jokers','G.jokers.cards'], 
         ['Consumeables','G.consumeables.cards'], 
         ['Full Deck','G.playing_cards'], 
         ['(Context) Card Effects','context.card_effects'], 
@@ -968,6 +1008,138 @@ Blockly.Blocks['var_change'] = {
   }
 };
 
+// Helper functions for mod_image block asset stuff
+function handleImageFile(file, block) {
+  const reader = new FileReader();
+  reader.onload = function(event) {
+    const dataUrl = event.target.result;
+    block.imageDataUrl = dataUrl;
+    if (!block.imageFilename) {
+      block.imageFilename = file.name;
+    }
+    block.getField('IMAGE_FIELD').setValue(dataUrl);
+    refreshImage2x(block);
+  };
+  reader.readAsDataURL(file);
+}
+
+function refreshImage2x(block) {
+  if (!block.imageDataUrl) return;
+  const img = new Image();
+  img.onload = function() {
+    const canvas = document.createElement('canvas');
+    canvas.width = img.width * 2;
+    canvas.height = img.height * 2;
+    const ctx = canvas.getContext('2d');
+    ctx.imageSmoothingEnabled = false;
+    ctx.webkitImageSmoothingEnabled = false;
+    ctx.mozImageSmoothingEnabled = false;
+    ctx.msImageSmoothingEnabled = false;
+    ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+    block.imageDataUrl2x = canvas.toDataURL('image/png');
+  };
+  img.src = block.imageDataUrl;
+}
+
+function triggerImageUpload(block) {
+  const input = document.createElement('input');
+  input.type = 'file';
+  input.accept = 'image/*';
+  input.onchange = function(e) {
+    const file = e.target.files?.[0];
+    if (file) {
+      handleImageFile(file, block);
+    }
+  };
+  input.click();
+}
+
+Blockly.Blocks['mod_image'] = {
+  init: function() {
+    this.setColour('#4079aa');
+    // placeholder
+    const placeholder = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='80' height='80' viewBox='0 0 80 80'><rect width='80' height='80' fill='%23eee' rx='8'/><text x='50%25' y='50%25' dominant-baseline='middle' text-anchor='middle' font-family='sans-serif' font-size='10' fill='%23666'>Click/Drop</text></svg>";
+    
+    this.appendDummyInput()
+        .appendField('Image:')
+        .appendField(new Blockly.FieldImage(placeholder, 80, 80, 'Click or drop an image file here', function(fieldImage) {
+          triggerImageUpload(fieldImage.getSourceBlock());
+        }), 'IMAGE_FIELD');
+        
+    this.appendDummyInput()
+        .appendField('Export Name:')
+        .appendField(new Blockly.FieldTextInput(''), 'NAME');
+        
+    this.setPreviousStatement(false, null);
+    this.setNextStatement(false, null);
+    this.setTooltip('Imports an image asset for your mod. Drag-and-drop or click to upload an image, which will be exported to the assets folder. This block can be put anywhere.');
+    
+    this.imageDataUrl = null;
+    this.imageDataUrl2x = null;
+    this.imageFilename = null;
+    this.dragEventsAttached = false;
+  },
+  // persist xml save/load stuff
+  mutationToDom: function() {
+    const container = Blockly.utils.xml.createElement('mutation');
+    if (this.imageDataUrl) container.setAttribute('dataurl', this.imageDataUrl);
+    if (this.imageFilename) container.setAttribute('filename', this.imageFilename);
+    return container;
+  },
+  domToMutation: function(xmlElement) {
+    this.imageDataUrl = xmlElement.getAttribute('dataurl') || null;
+    this.imageFilename = xmlElement.getAttribute('filename') || null;
+    if (this.imageDataUrl) {
+      this.getField('IMAGE_FIELD').setValue(this.imageDataUrl);
+      refreshImage2x(this);
+    }
+  },
+  saveExtraState: function() {
+    return { imageDataUrl: this.imageDataUrl, imageFilename: this.imageFilename };
+  },
+  loadExtraState: function(state) {
+    this.imageDataUrl = state?.imageDataUrl || null;
+    this.imageFilename = state?.imageFilename || null;
+    if (this.imageDataUrl) {
+      this.getField('IMAGE_FIELD').setValue(this.imageDataUrl);
+      refreshImage2x(this);
+    }
+  },
+  onchange: function(e) {
+    if (this.workspace && !this.dragEventsAttached) {
+      const svg = this.getSvgRoot();
+      if (svg) {
+        this.dragEventsAttached = true;
+        svg.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          svg.style.filter = 'brightness(1.2)';
+        });
+        svg.addEventListener('dragleave', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          svg.style.filter = '';
+        });
+        svg.addEventListener('drop', (e) => {
+          e.preventDefault();
+          e.stopPropagation();
+          svg.style.filter = '';
+          const file = e.dataTransfer?.files?.[0];
+          if (file && file.type.startsWith('image/')) {
+            handleImageFile(file, this);
+          }
+        });
+      }
+    }
+  }
+};
+//w i forgot why i do this honestly
+['Lua', 'JavaScript', 'Python', 'PHP', 'Dart'].forEach(lang => {
+  if (Blockly[lang]) {
+    Blockly[lang]['mod_image'] = function(block) { return ''; };
+  }
+});
+
 // toolbox
 const subcategoryMap = {
   'Consumeables': 'General',
@@ -1020,19 +1192,18 @@ Object.keys(categories).forEach(cat => {
 document.getElementById("toolbox").innerHTML = toolboxXml;
 
 const CARD_PROPERTY_OPTIONS = {
-  'G.joker.cards':        [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set'],['Extra Sell Value', 'card.ability.extra_value']],
-  'G.consumeables.cards': [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set'],['Extra Sell Value', 'card.ability.extra_value']],
-  'G.hand.cards':         [['Key', 'config.center.key'],['Set', 'card.ability.set']],
-  'G.play.cards':         [['Key', 'config.center.key'],['Set', 'card.ability.set']],
+  'G.jokers.cards':        [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'ability.set'],['Extra Sell Value', 'ability.extra_value'],['Getting Sliced?', 'getting_sliced']],
+  'G.consumeables.cards': [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'ability.set'],['Extra Sell Value', 'ability.extra_value']],
+  'G.hand.cards':         [['Key', 'config.center.key'],['Set', 'ability.set']],
+  'G.play.cards':         [['Key', 'config.center.key'],['Set', 'ability.set']],
 };
-const CARD_PROPERTY_DEFAULT_OPTIONS = [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set'],['Extra Sell Value', 'card.ability.extra_value']];
+const CARD_PROPERTY_DEFAULT_OPTIONS = [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'ability.set'],['Extra Sell Value', 'ability.extra_value'],['Getting Sliced?', 'getting_sliced']];
 
 Blockly.Blocks['card_property'].onchange = function(event) {
   if (!this.workspace) return;
 
   const conn = this.getInput('v')?.connection?.targetConnection;
   const connected = conn?.getSourceBlock();
-
   let newOptions;
   if (connected && connected.type === 'cards_stuff') {
     const cardType = connected.getFieldValue('cards');
@@ -1059,3 +1230,112 @@ Blockly.Blocks['card_property'].onchange = function(event) {
     dropdown.setValue(newOptions[0][1]);
   }
 };
+
+if (Blockly.Blocks['mod_image']) {
+  // clear things
+  const oldInit = Blockly.Blocks['mod_image'].init;
+  Blockly.Blocks['mod_image'].init = function() {
+    oldInit.call(this);
+  };
+
+  // superr cool util 
+  const safeUpdateImage = function(field, src) {
+    if (!field || !src) return;
+    if (typeof field.setSrc === 'function') field.setSrc(src);
+    if (typeof field.setValue === 'function') field.setValue(src);
+    
+    // inject stuff
+    field.src_ = src; 
+    field.value_ = src;
+    
+    // force update if its already renderd
+    if (field.imageElement_) {
+      field.imageElement_.setAttributeNS('http://www.w3.org/1999/xlink', 'xlink:href', src);
+    }
+  };
+
+  const generate2xFallback = function(block) {
+    if (block.imageDataUrl && !block.imageDataUrl2x) {
+      const img = new Image();
+      img.src = block.imageDataUrl;
+      img.onload = () => {
+        const canvas = document.createElement('canvas');
+        canvas.width = img.width * 2; canvas.height = img.height * 2;
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.drawImage(img, 0, 0, canvas.width, canvas.height);
+        block.imageDataUrl2x = canvas.toDataURL('image/png');
+      };
+    }
+  };
+
+  // track/presist stuff
+  Blockly.Blocks['mod_image'].mutationToDom = function() {
+    const container = Blockly.utils.xml.createElement('mutation');
+    if (this.imageDataUrl) container.setAttribute('data1x', this.imageDataUrl);
+    if (this.imageDataUrl2x) container.setAttribute('data2x', this.imageDataUrl2x);
+    return container;
+  };
+
+  Blockly.Blocks['mod_image'].domToMutation = function(xmlElement) {
+    this.imageDataUrl = xmlElement.getAttribute('data1x') || null;
+    this.imageDataUrl2x = xmlElement.getAttribute('data2x') || null;
+    
+    if (this.imageDataUrl) { 
+      // look through fields to find the one managing the image
+      const f = this.inputList.flatMap(i => i.fieldRow).find(field => field instanceof Blockly.FieldImage);
+      if (f) safeUpdateImage(f, this.imageDataUrl); 
+      generate2xFallback(this);
+    }
+  };
+
+  Blockly.Blocks['mod_image'].saveExtraState = function() {
+    return { imageDataUrl: this.imageDataUrl || null, imageDataUrl2x: this.imageDataUrl2x || null };
+  };
+
+  Blockly.Blocks['mod_image'].loadExtraState = function(state) {
+    this.imageDataUrl = state?.imageDataUrl || null;
+    this.imageDataUrl2x = state?.imageDataUrl2x || null;
+    
+    if (this.imageDataUrl) { 
+      // look through fields to find the one managing the image
+      const f = this.inputList.flatMap(i => i.fieldRow).find(field => field instanceof Blockly.FieldImage);
+      if (f) safeUpdateImage(f, this.imageDataUrl); 
+      generate2xFallback(this);
+    }
+  };
+}
+
+// jzip asset stuff
+if (window.JSZip) {
+  const originalFile = window.JSZip.prototype.file;
+  window.JSZip.prototype.file = function(name, data, options) {
+    const result = originalFile.apply(this, arguments);
+    if (name === 'main.lua' || name.endsWith('main.lua')) {
+      const workspace = Blockly.getMainWorkspace();
+      if (workspace) {
+        const imageBlocks = workspace.getAllBlocks(false).filter(b => b.type === 'mod_image');
+        imageBlocks.forEach(block => {
+          if (block.imageDataUrl) {
+            let filename = block.getFieldValue('NAME') || block.imageFilename || 'asset.png';
+            if (!filename.endsWith('.png') && !filename.includes('.')) {
+              filename += '.png';
+            }
+            
+            const base64_1x = block.imageDataUrl.split(',')[1];
+            if (base64_1x) {
+              originalFile.call(this, 'assets/1x/' + filename, base64_1x, {base64: true});
+            }
+            if (block.imageDataUrl2x) {
+              const base64_2x = block.imageDataUrl2x.split(',')[1];
+              if (base64_2x) {
+                originalFile.call(this, 'assets/2x/' + filename, base64_2x, {base64: true});
+              }
+            }
+          }
+        });
+      }
+    }
+    return result;
+  };
+}

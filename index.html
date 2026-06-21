@@ -283,6 +283,39 @@
 
     
   <button id="manageVarsBtn">Manage Variables</button>
+  <button id="remakesBtn" style="margin-top: 5px; width: 100%;">Remakes & Templates</button>
+
+  <div id="remakesModal" style="
+    display:none;
+    position: fixed;
+    min-width: 600px;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: #222;
+    color: #fff;
+    padding: 20px;
+    border-radius: 10px;
+    z-index: 100;
+    width: 300px;
+    box-shadow: 0 0 15px rgba(0,0,0,0.6);
+  ">
+    <button id="closeRemakes" style="
+      position:absolute;
+      top:5px;
+      right:5px;
+      background:#f44336;
+      border:none;
+      color:white;
+      padding:4px 8px;
+      border-radius:3px;
+      cursor:pointer;
+    ">X</button>
+
+    <h3 style="margin-top:0;">Vanilla Remakes</h3>
+    <p style="font-size: 12px; color: #aaa;">Load example templates</p>
+    <div id="remakesList" style="max-height:220px;overflow-y:auto;margin-bottom:10px;display:flex;flex-direction:column;gap:5px;"></div>
+  </div>
 
   <!-- Variable Manager Popup -->
   <div id="varManager" style="
@@ -379,6 +412,7 @@
   <script src="./scripts/block_defs.js"></script>
   <script src="./scripts/blocks.js"></script>
   <script src="./scripts/generators.js"></script>
+  <script src="./scripts/1x.js"></script>
   <script src="./scripts/main.js"></script>
 </body>
 </html>

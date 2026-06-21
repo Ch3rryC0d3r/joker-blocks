@@ -1,6 +1,31 @@
 Blockly.Lua = new Blockly.Generator('Lua');
 Blockly.Lua.hooks = [];
 
+Blockly.Lua.ORDER_ATOMIC = 0;
+Blockly.Lua.ORDER_HIGH = 1;
+Blockly.Lua.ORDER_UNARY = 2;
+Blockly.Lua.ORDER_EXPONENTIATION = 3;
+Blockly.Lua.ORDER_MULTIPLICATIVE = 4;
+Blockly.Lua.ORDER_ADDITIVE = 5;
+Blockly.Lua.ORDER_CONCATENATION = 6;
+Blockly.Lua.ORDER_RELATIONAL = 7;
+Blockly.Lua.ORDER_AND = 8;
+Blockly.Lua.ORDER_OR = 9;
+Blockly.Lua.ORDER_NONE = 99;
+
+// order constants - valueToCode needs real numbers here. lower = binds tighter.
+Blockly.Lua.ORDER_ATOMIC = 0;
+Blockly.Lua.ORDER_HIGH = 1;
+Blockly.Lua.ORDER_UNARY = 2;
+Blockly.Lua.ORDER_EXPONENTIATION = 3;
+Blockly.Lua.ORDER_MULTIPLICATIVE = 4;
+Blockly.Lua.ORDER_ADDITIVE = 5;
+Blockly.Lua.ORDER_CONCATENATION = 6;
+Blockly.Lua.ORDER_RELATIONAL = 7;
+Blockly.Lua.ORDER_AND = 8;
+Blockly.Lua.ORDER_OR = 9;
+Blockly.Lua.ORDER_NONE = 99;
+
 function generateRandomString(length) {
   const characters = `ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789`;
   let result = '';
@@ -61,6 +86,18 @@ Blockly.Lua.workspaceToCode = function(workspace) {
   resetLocalVarTracking();
   let code = originalWorkspaceToCode.call(this, workspace);
   code = mergeDebuffLines(code);
+
+  // Merge __SMODS_RETMERGE__ lines into single table returns
+  code = code.replace(/([ \t]*)__SMODS_RETMERGE__(.*?)__SMODS_RETMERGE_END__\n(?:\1__SMODS_RETMERGE__.*?__SMODS_RETMERGE_END__\n)*/g, (match, indent) => {
+      const pairs = [];
+      const regex = /__SMODS_RETMERGE__(.*?)__SMODS_RETMERGE_END__/g;
+      let m;
+      while ((m = regex.exec(match)) !== null) {
+          pairs.push(m[1]);
+      }
+      return `${indent}return {\n${indent}    ${pairs.join(',\n' + indent + '    ')}\n${indent}}\n`;
+  });
+
   return code;
 };
 
@@ -72,6 +109,18 @@ function isInsideBlind(block) {
     parent = parent.getSurroundParent();
   }
   return false;
+}
+
+function walkStatementInput(block, inputName) {
+  let current = block.getInputTargetBlock(inputName);
+  let code = '';
+  while (current) {
+    let generated = Blockly.Lua.blockToCode(current) || '';
+    if (Array.isArray(generated)) generated = generated[0];
+    code += generated;
+    current = current.getNextBlock();
+  }
+  return code;
 }
 
 function genLuaFromTemplate(template, block) {
@@ -128,7 +177,7 @@ function genLuaFromTemplate(template, block) {
   const nextCode = next ? Blockly.Lua.blockToCode(next) : '';
   if (result.includes('[[children]]')) {
     result = result.replaceAll('[[children]]', nextCode ?? '');
-  } else if (nextCode && !block.getPreviousBlock()) {
+  } else if (nextCode && !block.getPreviousBlock() && !block.getSurroundParent()) {
     // Only auto-append if this block is the FIRST in a chain.
     // Non-first siblings are already walked by the parent statement loop,
     // so appending here would double-emit them.
@@ -142,8 +191,24 @@ function genLuaFromTemplate(template, block) {
           result = result.replace(/\{\s*"\[\[b\]\]"\s*\}/g, `{}`);
       } else {
           // Split on \n and create separate quoted strings
-          const lines = textField.split('\\n');
-          const quotedLines = lines.map(line => `"${line.trim().replace(/"/g, '\\"')}"`).join(', ');
+          const lines = textField.split(/\r?\n|\\n/);
+          const quotedLines = lines.map(line => {
+              let cleaned = line.trim();
+              let processed = cleaned;
+              
+              // Strip a trailing comma if present to check the true string bounds
+              if (processed.endsWith(',')) {
+                  processed = processed.slice(0, -1).trim();
+              }
+              
+              // If it's already surrounded by quotes, keep it exactly as-is
+              if (processed.startsWith('"') && processed.endsWith('"')) {
+                  return processed;
+              }
+              
+              // Otherwise, format normally as a new string line
+              return `"${cleaned.replace(/"/g, '\\"')}"`;
+          }).join(', ');
           
           result = result.replace(/"\[\[b\]\]"/g, quotedLines);
       }
@@ -171,34 +236,7 @@ function genLuaFromTemplate(template, block) {
     result = result.replace(/\bcard\b/g, 'blind');
   }
 
-{
-  // Don't merge if we have if/else/for/while structures that contain the returns
-  const hasControlFlow = /^\s*(if|else|for|while|repeat|function)/m.test(result);
-  
-  if (!hasControlFlow) {
-    // Original merge logic only for non-control-flow blocks
-    const returnMatches = [...result.matchAll(/return\s*\{([^}]*)\}/g)];
-    if (returnMatches.length > 1) {
-      const mergedContent = returnMatches
-        .map(m => m[1].trim())
-        .filter(Boolean)
-        .join(', ');
-      
-      // Remove ALL return statements first
-      result = result.replace(/return\s*\{[^}]*\}\n?/g, '');
-      
-      // Add merged return at the end, but respect existing indentation
-      if (result.includes('end,')) {
-        result = result.replace(/(\s+)end,/, `$1return { ${mergedContent} }\n$1end,`);
-      } else if (result.includes('end\n')) {
-        result = result.replace(/(\s+)end\n/, `$1return { ${mergedContent} }\n$1end\n`);
-      } else {
-        result += `\nreturn { ${mergedContent} }\n`;
-      }
-    }
-  }
-}
-  return result;
+return result;
 }
 
 Blockly.Lua.forBlock['not'] = function(block) {
@@ -210,7 +248,7 @@ Blockly.Lua.forBlock['not'] = function(block) {
         conditionCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `not ${conditionCode}`;
+    const code = `(not (${conditionCode}))`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -231,7 +269,7 @@ Blockly.Lua.forBlock['and'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `${leftCode} and ${rightCode}`;
+    const code = `((${leftCode}) and (${rightCode}))`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -295,7 +333,7 @@ Blockly.Lua.forBlock['or'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `${leftCode} or ${rightCode}`;
+    const code = `((${leftCode}) or (${rightCode}))`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -334,31 +372,15 @@ Blockly.Lua.forBlock['givex'] = function(block) {
     parent = parent.getSurroundParent();
   }
 
-  // next block if chained
-  const nextBlock = block.getNextBlock();
-  let nextCode = '';
-  if (nextBlock) {
-    const generated = Blockly.Lua.blockToCode(nextBlock);
-    nextCode = Array.isArray(generated) ? generated[0] : generated;
-  }
-
   if (key === 'dollars' && insideDollarBonus) {
-    return `return ${amt}\n${nextCode}`;
+    return `return ${amt}\n`;
   }
-  if (key === 'message') {
-    // For message, check if amt looks like a function call (contains parentheses)
-    // If it does, don't wrap in quotes. Otherwise, wrap in quotes.
-    const isFunctionCall = /\(.*\)/.test(amt);
-    const wrappedAmt = isFunctionCall ? amt : `'${amt}'`;
-    return `return { ${key} = ${wrappedAmt} }\n`;
+    if (key === 'message') {
+    const isCodeBlock = /\(.*\)/.test(amt) || amt.trim().startsWith('localize {');
+    amt = isCodeBlock ? amt : `'${amt}'`;
   }
 
-  // default (normal table return)
-  if (nextCode.trim().startsWith('return {')) {
-    return nextCode.replace('return {', `return { ${key} = ${amt},`);
-  } else {
-    return `return { ${key} = ${amt} }\n`;
-  }
+  return `__SMODS_RETMERGE__${key} = ${amt}__SMODS_RETMERGE_END__\n`;
 };
 
 Blockly.Lua.forBlock['check_suit'] = function(block) {
@@ -456,8 +478,8 @@ Blockly.Lua.forBlock['get_prob_vars'] = function(block) {
 
 Blockly.Lua.forBlock['if_else'] = function(block) {
   const conditionBlock = block.getInputTargetBlock('condition');
-  const ifBody = Blockly.Lua.statementToCode(block, 'if_body');
-  const elseBody = Blockly.Lua.statementToCode(block, 'else_body');
+  const ifBody = walkStatementInput(block, 'if_body');
+  const elseBody = walkStatementInput(block, 'else_body');
   
   let conditionCode = 'false';
   if (conditionBlock) {
@@ -554,7 +576,7 @@ Blockly.Lua.forBlock['multiply'] = function(block) {
         rightCode = Array.isArray(generated) ? generated[0] : generated;
     }
     
-    const code = `${leftCode}) * ${rightCode}`;
+    const code = `${leftCode} * ${rightCode}`;
     return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
@@ -667,14 +689,15 @@ Blockly.Lua.forBlock['joker_conditions'] = function(block) {
     }
 };
 
+Blockly.Lua.forBlock['sliced_card'] = function(block) {
+    return ['sliced_card', Blockly.Lua.ORDER_ATOMIC];
+};
+
 Blockly.Lua.forBlock['cards_stuff'] = function(block) {
     const cards = block.getFieldValue('cards');
-    const idx = block.getInputTargetBlock('idx');
-
-    if (idx) {
-      return `${cards}[${idx}]`; 
-    }
-    return ``;
+    const idxCode = Blockly.Lua.valueToCode(block, 'idx', Blockly.Lua.ORDER_ATOMIC) || '1';
+    const code = `${cards}[${idxCode}]`;
+    return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
 Blockly.Lua.forBlock['card_conditions'] = function(block) {
@@ -720,9 +743,66 @@ Blockly.Lua.forBlock['game_conditions'] = function(block) {
             return ['context.skip_blind', Blockly.Lua.ORDER_ATOMIC];
         case "scoring":
             return ['context.scoring_name', Blockly.Lua.ORDER_ATOMIC];
+        case "playing card destroyed":
+            return ['context.remove_playing_cards', Blockly.Lua.ORDER_ATOMIC];
+        case "any card destroyed":
+            return ['(context.joker_type_destroyed or context.remove_playing_cards)', Blockly.Lua.ORDER_ATOMIC];
+        case "joker destroyed":
+            return ['context.joker_type_destroyed', Blockly.Lua.ORDER_ATOMIC];
+        case "boss blind defeated":
+            return ['(context.end_of_round and context.game_over == false and context.main_eval and context.beat_boss)', Blockly.Lua.ORDER_ATOMIC];
+        case "blind defeated":
+            return ['(context.end_of_round and context.game_over == false and context.main_eval and not context.beat_boss)', Blockly.Lua.ORDER_ATOMIC];
+        case "any blind defeated":
+            return ['(context.end_of_round and context.game_over == false and context.main_eval)', Blockly.Lua.ORDER_ATOMIC];
         default:
             return [condition, Blockly.Lua.ORDER_ATOMIC];
     }
+};
+
+Blockly.Lua.forBlock['localize'] = function(block) {
+    const inputBlock = block.getInputTargetBlock('input');
+    let inputCode = '""';
+    if (inputBlock) {
+        const generated = Blockly.Lua.blockToCode(inputBlock);
+        inputCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+    }
+
+    const typeBlock = block.getInputTargetBlock('type');
+    let typeCode = '';
+    if (typeBlock) {
+        const generated = Blockly.Lua.blockToCode(typeBlock);
+        typeCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+    }
+
+    // Only output the second argument if the user plugged something into it
+    if (typeCode && typeCode !== 'nil' && typeCode !== '""' && typeCode !== "''") {
+        return [`localize(${inputCode}, ${typeCode})`, Blockly.Lua.ORDER_ATOMIC];
+    } else {
+        return [`localize(${inputCode})`, Blockly.Lua.ORDER_ATOMIC];
+    }
+};
+
+Blockly.Lua.forBlock['localize_advanced'] = function(block) {
+    const locType = block.getFieldValue('loc_type');
+    const locKey = block.getFieldValue('loc_key');
+    const locSet = block.getFieldValue('loc_set');
+    
+    const varsBlock = block.getInputTargetBlock('vars');
+    let varsCode = '';
+    if (varsBlock) {
+        const generated = Blockly.Lua.blockToCode(varsBlock);
+        varsCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+    }
+    
+    let props = [];
+    if (locType) props.push(`type = '${locType}'`);
+    if (locKey) props.push(`key = '${locKey}'`);
+    if (locSet) props.push(`set = '${locSet}'`);
+    if (varsCode) props.push(`vars = { ${varsCode} }`);
+    
+    const code = `localize { ${props.join(', ')} }`;
+    return [code, Blockly.Lua.ORDER_ATOMIC];
 };
 
 Blockly.Lua.forBlock['change'] = function(block) {
@@ -757,7 +837,6 @@ Blockly.Lua.forBlock['change'] = function(block) {
         code = `${func}(${valueCode})\n`;
     }
     return code;
-    
 };
 
 Blockly.Lua.forBlock['copy_consumeable'] = function(block) {
@@ -849,6 +928,12 @@ Blockly.Lua.forBlock['left_parenthesis'] = function(block) {
   return [`(${inputCode}`, Blockly.Lua.ORDER_ATOMIC];
 };
 
+Blockly.Lua.forBlock['comment_block'] = function(block) {
+    const comment = block.getFieldValue('comment');
+    let code = `-- ${comment}\n`
+    return code;
+};
+
 Blockly.Lua.forBlock['right_parenthesis'] = function(block) {
   const inputBlock = block.getInputTargetBlock('input');
   let inputCode = '';
@@ -865,11 +950,28 @@ Blockly.Lua.forBlock['card_amt'] = function(block) {
   return `#G.${type}.cards`;
 };
 
+Blockly.Lua.forBlock['hand_value'] = function(block) {
+    const val = block.getFieldValue('v');
+    // Returns it as a raw clean string value
+    return [`'${val}'`, Blockly.Lua.ORDER_ATOMIC];
+};
+
 Blockly.Lua.forBlock['exact_hand_type'] = function(block) {
-    const condition = block.getFieldValue('condition');
+    const conditionBlock = block.getInputTargetBlock('condition');
+    let conditionCode = "''";
+    if (conditionBlock) {
+        const generated = Blockly.Lua.blockToCode(conditionBlock);
+        conditionCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+    }
     
-    if (condition == "Most Played Hand") {
-        return `(function()
+    // Strip surrounding quotes if it's a raw static string block to evaluate macro conditions
+    let rawStrValue = conditionCode;
+    if ((rawStrValue.startsWith("'") && rawStrValue.endsWith("'")) || (rawStrValue.startsWith('"') && rawStrValue.endsWith('"'))) {
+        rawStrValue = rawStrValue.slice(1, -1);
+    }
+    
+    if (rawStrValue === "Most Played Hand") {
+        return [`(function()
     local current_played = G.GAME.hands[context.scoring_name].played or 0
     for handname, values in pairs(G.GAME.hands) do
         if handname ~= context.scoring_name and values.played > current_played and values.visible then
@@ -877,9 +979,9 @@ Blockly.Lua.forBlock['exact_hand_type'] = function(block) {
         end
     end
     return true
-end)()`;
-    } else if (condition == "Least Played Hand") {
-        return `(function()
+end)()`, Blockly.Lua.ORDER_ATOMIC];
+    } else if (rawStrValue === "Least Played Hand") {
+        return [`(function()
     local current_played = G.GAME.hands[context.scoring_name].played or 0
     for handname, values in pairs(G.GAME.hands) do
         if handname ~= context.scoring_name and values.played < current_played and values.visible then
@@ -887,44 +989,57 @@ end)()`;
         end
     end
     return true
-end)()`;
+end)()`, Blockly.Lua.ORDER_ATOMIC];
     } else {
-        return `context.scoring_name == ${condition}`
-    }
-    
+        return [`context.scoring_name == ${conditionCode}`, Blockly.Lua.ORDER_ATOMIC];
+    }  
 };
 
 Blockly.Lua.forBlock['contain_hand_type'] = function(block) {
-    const condition = block.getFieldValue('condition');
-    
-    if (condition == "Most Played Hand") {
-        return `(function()
-    local current_played = G.GAME.hands[context.scoring_name].played or 0
-    for handname, values in pairs(G.GAME.hands) do
-        if handname ~= context.scoring_name and values.played > current_played and values.visible then
-            return false
-        end
-    end
-    return true
-end)()`;
-    } else if (condition == "Least Played Hand") {
-        return `(function()
-    local current_played = G.GAME.hands[context.scoring_name].played or 0
-    for handname, values in pairs(G.GAME.hands) do
-        if handname ~= context.scoring_name and values.played < current_played and values.visible then
-            return false
-        end
-    end
-    return true
-end)()`;
-    } else {
-        return `context.scoring_name == ${condition}`
+    const conditionBlock = block.getInputTargetBlock('condition');
+    let conditionCode = "''";
+    if (conditionBlock) {
+        const generated = Blockly.Lua.blockToCode(conditionBlock);
+        conditionCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
     }
     
+    // Strip surrounding quotes if it's a raw static string block to evaluate macro conditions
+    let rawStrValue = conditionCode;
+    if ((rawStrValue.startsWith("'") && rawStrValue.endsWith("'")) || (rawStrValue.startsWith('"') && rawStrValue.endsWith('"'))) {
+        rawStrValue = rawStrValue.slice(1, -1);
+    }
+    
+    if (rawStrValue === "Most Played Hand") {
+        return [`(function()
+    local target_hand = nil
+    local max_played = -1
+    for handname, values in pairs(G.GAME.hands) do
+        if values.visible and values.played > max_played then
+            max_played = values.played
+            target_hand = handname
+        end
+    end
+    return (target_hand and context.poker_hands and context.poker_hands[target_hand] and next(context.poker_hands[target_hand])) and true or false
+end)()`, Blockly.Lua.ORDER_ATOMIC];
+    } else if (rawStrValue === "Least Played Hand") {
+        return [`(function()
+    local target_hand = nil
+    local min_played = math.huge
+    for handname, values in pairs(G.GAME.hands) do
+        if values.visible and values.played < min_played then
+            min_played = values.played
+            target_hand = handname
+        end
+    end
+    return (target_hand and context.poker_hands and context.poker_hands[target_hand] and next(context.poker_hands[target_hand])) and true or false
+end)()`, Blockly.Lua.ORDER_ATOMIC];
+    } else {
+        return [`(context.poker_hands and context.poker_hands[${conditionCode}] and next(context.poker_hands[${conditionCode}])) and true or false`, Blockly.Lua.ORDER_ATOMIC];
+    }
 };
 
 Blockly.Lua.forBlock['calc'] = function(block) {
-  let body = Blockly.Lua.statementToCode(block, 'body');
+  let body = walkStatementInput(block, 'body');
   body = indentLua(body, 1); 
 
   if (isInsideBlind(block)) {
@@ -950,7 +1065,7 @@ Blockly.Lua.forBlock['boss_type'] = function(block) {
 Blockly.Lua['repeat_block'] = function(block) {
   const start = Blockly.Lua.valueToCode(block, 'START', Blockly.Lua.ORDER_NONE) || '1';
   const end = Blockly.Lua.valueToCode(block, 'END', Blockly.Lua.ORDER_NONE) || '10';
-  const branch = Blockly.Lua.statementToCode(block, 'DO');
+  const branch = indentLua(walkStatementInput(block, 'DO'), 1);
   
   let code = `for i = ${start}, ${end} do\n${branch}end\n`;
   return code;
@@ -968,6 +1083,32 @@ Blockly.Lua.forBlock['in_blind'] = function(block) {
   return code;
 };
 
+Blockly.Lua.forBlock['slice_joker'] = function(block) {
+    const idxBlock = block.getInputTargetBlock('idx');
+    let idxCode = '1';
+    if (idxBlock) {
+        const generated = Blockly.Lua.blockToCode(idxBlock);
+        idxCode = (Array.isArray(generated) ? generated[0] : generated).replace(/\n$/, '');
+    }
+    
+    let body1 = walkStatementInput(block, 'body1');
+    let body2 = walkStatementInput(block, 'body2');
+    
+    return `local sliced_card = G.jokers.cards[${idxCode}]
+sliced_card.getting_sliced = true
+G.GAME.joker_buffer = G.GAME.joker_buffer - 1
+G.E_MANAGER:add_event(Event({
+    func = function()
+        G.GAME.joker_buffer = 0
+${body1}        card:juice_up(0.8, 0.8)
+        sliced_card:start_dissolve({ HEX("57ecab") }, nil, 1.6)
+        play_sound('slice1', 0.96 + math.random() * 0.08)
+        return true
+    end
+}))
+${body2}`;
+};
+
 Blockly.Lua.forBlock['change_sfreq'] = function(block) {
     const req = block.getFieldValue('a') || '4';
     const rawId = block.getInputTargetBlock('id')
@@ -980,11 +1121,11 @@ Blockly.Lua.forBlock['change_sfreq'] = function(block) {
 
     const code =
 `_smods_four_fingers_ref = SMODS.four_fingers
-SMODS.four_fingers = function(hand_type)
+SMODS.four_fingers = function(hand_type, ...)
     if next(SMODS.find_card('${fullId}')) then
         return ${req}
     end
-    return _smods_four_fingers_ref(hand_type)
+    return _smods_four_fingers_ref(hand_type, ...)
 end
 `;
 
@@ -1193,7 +1334,23 @@ Blockly.Lua.forBlock['mod_denominator'] = function(block) {
 BLOCK_DEFS.forEach(def => {
     if (def.lua && !Blockly.Lua.forBlock[def.type]) {
         Blockly.Lua.forBlock[def.type] = function (block) {
-            return genLuaFromTemplate(def.lua, block);
+            let generatedCode = genLuaFromTemplate(def.lua, block);
+            
+            // Value blocks must return a tuple: [code, order]
+            if (def.output) {
+                return [generatedCode, Blockly.Lua.ORDER_ATOMIC];
+            }
+            
+            // FIX: Append code from the next block connected below
+            if (typeof Blockly.Lua.scrub_ === 'function') {
+                return Blockly.Lua.scrub_(block, generatedCode);
+            } else {
+                const nextBlock = block.nextConnection && block.nextConnection.targetBlock();
+                if (nextBlock) {
+                    generatedCode += Blockly.Lua.blockToCode(nextBlock);
+                }
+                return generatedCode;
+            }
         };
     }
 });

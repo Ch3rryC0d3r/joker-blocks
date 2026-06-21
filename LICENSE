@@ -1,0 +1,37 @@
+MIT License
+
+Copyright (c) 2026
+
+Permission is hereby granted, free of charge, to any person obtaining a copy
+of this software and associated documentation files (the "Software"), to deal
+in the Software without restriction, including without limitation the rights
+to use, copy, modify, merge, publish, distribute, sublicense, and/or sell
+copies of the Software, and to permit persons to whom the Software is
+furnished to do so, subject to the following conditions:
+
+The above copyright notice and this permission notice shall be included in all
+copies or substantial portions of the Software.
+
+THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR
+IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY,
+FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE
+AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER
+LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
+OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
+SOFTWARE.
+
+================================================================================
+BALATRO GAME ASSETS & TRADEMARK NOTICE
+================================================================================
+The MIT License granted above applies SOLELY to the custom source code, software 
+logic, block structures, layout generation systems, and user interface configurations 
+created for this project.
+
+This license DOES NOT extend to any game assets, sprites, textures, graphics, 
+base64-encoded image data sheets, text descriptions, or characters originating 
+from the video game "Balatro".
+
+All such game assets, imagery, and related materials are the exclusive property 
+and copyrighted work of LocalThunk and Playstack. This project is entirely 
+unofficial, strictly non-commercial, and is intended solely as an educational 
+sandbox for community modding and prototyping. No copyright infringement is intended.

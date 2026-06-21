@@ -48,6 +48,36 @@ function GameObjectBlocks() {
 function ConditionBlocks() {
     return [
         {
+            type: 'is_true',
+            inlineInputs: true,
+            title: '',
+            category: 'Conditions',
+            color: '#725cb8',
+            output: 'Boolean',
+            lua: '(([[field]]) and [[truthy]] or [[falsy]])',
+            tooltip: 'If the field is a "truthy" value (Not `nil` or something like `true`)',
+            valueInputs: [
+                { name: 'field', label: 'if' },
+                { name: 'truthy', label: 'then' },
+                { name: 'falsy', label: 'or' },
+            ]
+        },
+        {
+            type: 'is_false',
+            inlineInputs: true,
+            title: '',
+            category: 'Conditions',
+            color: '#725cb8',
+            output: 'Boolean',
+            lua: '((not [[field]]) and [[truthy]] or [[falsy]])',
+            tooltip: 'If the field is a "falsy" value (`nil` or something like `false`)',
+            valueInputs: [
+                { name: 'field', label: 'if not' },
+                { name: 'truthy', label: 'then' },
+                { name: 'falsy', label: 'or' },
+            ]
+        },
+        {
             type: 'blind_conditions',
             title: 'Blind condition',
             category: 'Conditions',
@@ -120,7 +150,7 @@ function ConditionBlocks() {
                     type: 'dropdown', 
                     options: [
                         ['Run was won.', 'run was won'],
-                        ['Card held in hand was triggered','card trigger'],
+                       // ['In-hand card ability triggered','card trigger'],
                         ['After scoring','after scoring'],
                         ['A card was sold','card sold'],
                         ['A card is scoring','card score'],   
@@ -134,6 +164,12 @@ function ConditionBlocks() {
                         ['First hand drawn','first hand drawn'],
                         ['Skipping blind','skipping blind'],
                         ['Main Eval','context.main_eval'],
+                        ['Playing Card destroyed','playing card destroyed'],
+                        ['Any Card destroyed','any card destroyed'],
+                        ['Joker destroyed','joker destroyed'],
+                        ['Boss Blind defeated','boss blind defeated'],
+                        ['Blind defeated','blind defeated'],
+                        ['Any Blind defeated','any blind defeated'],
                     ]
                 }
             ]
@@ -192,27 +228,38 @@ function ConditionBlocks() {
             category: 'Values',
             color: '#4079aa',
             output: 'Object',
-        },                        
+        },
+        {
+            type: 'hand_value',
+            title: 'Hand',
+            category: 'Values',
+            color: '#4079aa',
+            output: 'String',
+            tooltip: 'A Balatro poker hand type selection.',
+            fields: [
+                { name: 'v', label: '', type: 'dropdown', options: ["High Card","Flush","Flush Five","Full House","Pair","Three of a Kind","Four of a Kind","Straight","Straight Flush","Two Pair","Five of a Kind","Flush House","Most Played Hand","Least Played Hand"] },
+            ]
+        },
         {
             type: 'contain_hand_type',
-            title: 'Hand Type',
+            title: 'Hand Type contains',
             category: 'Conditions',
             color: '#725cb8',
             output: 'Boolean',
-            tooltip: 'Checks if played hand contains a specific poker hand',
-            fields: [
-                { name: 'condition', label: 'contains', type: 'dropdown', options: ["High Card","Flush","Flush Five","Full House","Pair","Three of a Kind","Four of a Kind","Straight","Straight Flush","Two Pair","Five of a Kind","Flush House","Most Played Hand","Least Played Hand"] },
+            tooltip: 'Checks if played hand contains a specific poker hand expression or string evaluation',
+            valueInputs: [
+                { name: 'condition', label: '', check: 'String' }
             ]
         }, 
         {
             type: 'exact_hand_type',
-            title: 'Played Poker Hand',
+            title: 'Played Poker Hand is',
             category: 'Conditions',
             color: '#725cb8',
             output: 'Boolean',
-            tooltip: 'Checks if the type of played poker hand is a poker hand',
-            fields: [
-                { name: 'condition', label: 'is', type: 'dropdown', options: ["High Card","Flush","Flush Five","Full House","Pair","Three of a Kind","Four of a Kind","Straight","Straight Flush","Two Pair","Five of a Kind","Flush House","Most Played Hand","Least Played Hand"] },
+            tooltip: 'Checks if the type of played poker hand matches a specific hand expression or string evaluation',
+            valueInputs: [
+                { name: 'condition', label: '', check: 'String' }
             ]
         },
         {
@@ -351,8 +398,7 @@ function LogicBlocks() {
             fields: [
                 { name: 'val', label: '', type: 'text', default: '     ' }
             ]
-        },        
-                   
+        },
         {
             type: 'not',
             title: 'not',
@@ -409,16 +455,14 @@ function LogicBlocks() {
             color: '#5cb85c',
             output: 'Number',
             tooltip: 'Compares two values (A == B).'
-        },   
+        },
         {
             type: 'set_some_value',
             title: 'Set',
             category: 'Logic',
 			inlineInputs: true,
-			lua: '[[left]] = [[right]]',
+			lua: '[[left]] = [[right]]\n',
             color: '#5cb85c',
-			nextStatement: true,
-			previousStatement: true,
             tooltip: 'Sets a misc. value to some other value',
             valueInputs: [
                 { name: 'left', label: '', check: null },
@@ -549,7 +593,7 @@ function LogicBlocks() {
                 { name: 'right', label: '/' }
             ],
             tooltip: 'Returns `A / B` (A being left value, B being right value)'
-        },                            
+        },
         {
             type: 'game_value',
             title: 'Game Value',
@@ -640,15 +684,45 @@ function LogicBlocks() {
             valueInputs: [
                 { name: 'card', label: '', check: null }
             ],
-        },      
+        },
         {
             type: 'localize',
             title: 'localize',
             category: 'General',
             color: '#4079aa',
-            lua: 'localize("[[input]]")',
-            output: 'String'
-        },         
+            inlineInputs: true,
+            output: 'String',
+            valueInputs: [
+                { name: 'input', label: '', check: null },
+                { name: 'type', label: 'type (opt)', check: null }
+            ],
+            tooltip: 'Localizes a string. Type is optional (e.g. "poker_hands" using a text block)'
+        },
+        {
+            type: 'localize_advanced',
+            title: 'Advanced Localize: ',
+            inlineInputs: true,
+            category: 'General',
+            color: '#4079aa',
+            output: 'String',
+            fields: [
+                { name: 'loc_type', label: 'Type', type: 'text', default: 'variable' },
+                { name: 'loc_key', label: 'Key', type: 'text', default: 'a_mult' },
+                { name: 'loc_set', label: 'Set', type: 'text', default: '' }
+            ],
+            valueInputs: [
+                { name: 'vars', label: 'Vars:', check: null }
+            ],
+            tooltip: "Outputs: localize { type = '...', key = '...', set = '...', vars = { ... } }"
+        },
+        {
+            type: 'sliced_card',
+            title: 'sliced_card',
+            category: 'General',
+            color: '#4079aa',
+            output: 'Object',
+            tooltip: 'Reference to the sliced card object (used in contexts where a card is destroyed/consumed).'
+        },
         {
             type: 'next',
             title: 'next',
@@ -854,17 +928,17 @@ return pseudorandom_element(_poker_hands, "joker_blocks"))()`,
         },
         {
             type: 'limit',
-            title: 'Limit',
+            title: 'Pick larger between',
             category: 'Values',
             color: '#4079aa',
             output: 'Number',
             valueInputs: [
-                { name: 'val', label: 'Value', check: null },
-                { name: 'lim', label: 'to', check: null }
+                { name: 'val', label: '', check: null },
+                { name: 'lim', label: 'and', check: null }
             ],
             lua: 'math.max([[lim]], [[val]])',
             tooltip: 'Limits a value to a maximum by returning the higher of the two (math.max).'
-        },      
+        },
         {
             type: 'card_property',
             title: '',
@@ -877,11 +951,11 @@ return pseudorandom_element(_poker_hands, "joker_blocks"))()`,
                 { name: 'v', label: 'value of', check: 'Object' }
             ],
             fields: [
-              { name: 't', label: 'Get', type: 'dropdown', options: [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'card.ability.set'],['Extra Sell Value', 'card.ability.extra_value']] },
+              { name: 't', label: 'Get', type: 'dropdown', options: [['Sell', 'sell_cost'],['Buy', 'cost'],['Rarity', 'config.center.rarity'],['Key', 'config.center.key'],['Set', 'ability.set'],['Extra Sell Value', 'ability.extra_value'],['Getting Sliced', 'getting_sliced']] },
             ],
             lua: '[[v]].[[t]]',
             tooltip: 'Gets a property of a card (i.e. Sell value of a joker)'
-        },      
+        },
         {
             type: 'area_exist',
             title: '',
@@ -895,6 +969,21 @@ return pseudorandom_element(_poker_hands, "joker_blocks"))()`,
             ],
             lua: '[[area]]',
             tooltip: 'Gets the selected area, can be used to check if an area currently exists'
+        },
+        {
+            type: 'area_config',
+            title: '',
+            fieldsFirst: true,
+            inlineInputs: true,
+            category: 'Values',
+            color: '#4079aa',
+            output: 'Table',
+            fields: [
+              { name: 'area', label: 'Area', type: 'dropdown', options: ['G.consumeables','G.jokers'] },
+              { name: 'config', label: 'Property', type: 'dropdown', options: [['Card Limit','card_limit']] },
+            ],
+            lua: '[[area]].config.[[config]]',
+            tooltip: 'Gets a selected config property of a selected area.'
         },
         {
             type: 'table_index',
@@ -1012,7 +1101,7 @@ function ControlBlocks() {
                 { name: 'condition', label: '', check: 'Boolean' }
             ],
             // other stuff is handled in blocks.js
-        },        
+        }, 
         {
             type: 'repeat',
             title: 'Repeat',
@@ -1044,7 +1133,19 @@ function ControlBlocks() {
 }
 
 function GeneralBlocks() {
-  return [    
+  return [
+        {
+            type: 'mod_image',
+            title: 'Image',
+            category: 'General',
+            color: '#2a8997',
+            lua: ' ',
+            previousStatement: false,
+            nextStatement: false,
+            fields: [
+                { name: 'NAME', label: 'Filename', type: 'text', default: 'asset.png' }
+            ],
+        },
         {
             type: 'gen_loc_txt',
             title: 'Properties: ',
@@ -1070,7 +1171,7 @@ function GeneralBlocks() {
             title: 'Comment',
             category: 'General',
             color: '#ff9d4c',
-            lua: '-- [[comment]]\n',
+            nextStatement: true,
             fields: [
                 { name: 'comment', label: '', type: 'text' }
             ],
@@ -1360,7 +1461,7 @@ function GeneralBlocks() {
                 { name: 'v', label: 'Volume', type: 'text', default: 1 },
             ],
             tooltip: 'Plays a sound with pitch and volume.'
-        },      
+        },
         {
             type: 'change_sfreq', // sfreq = straight/flush requirement
             title: 'Change Straight/Flush Req.',
@@ -1447,7 +1548,15 @@ function GeneralBlocks() {
             category: 'General',
             color: '#4079aa',
 			lua: 'SMODS.draw_cards([[num]])',
-        },		
+        },
+        {
+            type: 'slice_joker',
+            title: 'Slice Joker at Index:',
+            category: 'General',
+            color: '#e84141',
+            tooltip: 'Slices a joker (like Ceremonial Dagger). body1 runs inside the destruction event.',
+            // properties are defined in blocks.js
+        },
   ];
 }
 
@@ -1630,7 +1739,7 @@ function JokerFunctionBlocks() {
                 { name: 'a', label: 'Rarity', type: 'text', default: 1 }
             ],
             tooltip: 'Rarity for this Joker. 1 = Common, 2 = Uncommon, 3 = Rare, 4 = Legendary. For custom rarities use "modprefix_Rarity"'
-        },     
+        },
         {
             type: 'joker_display_size',
             title: 'Display Size: ',
@@ -1644,11 +1753,23 @@ function JokerFunctionBlocks() {
             tooltip: 'Changes the display size of cards by scaling them by a factor relative to pixel size (default: 71x95).'
         },
         {
+            type: 'joker_pixel_size',
+            title: 'Pixel Size: ',
+            category: 'Joker',
+            color: '#4495a1',
+            lua: 'pixel_size = {w=[[w]], h=[[h]]},\n',
+            fields: [
+                { name: 'w', label: 'Width', type: 'text', default: 71 },
+                { name: 'h', label: 'Height', type: 'text', default: 95 }				
+            ],
+            tooltip: 'Changes the pixel size of cards (Like how "Half Joker" does)'
+        },
+        {
             type: 'joker_pos',
             title: 'My Position',
             category: 'Joker',
             color: '#40a5aa',
-            output: 'String',
+            output: 'Integer',
             tooltip: 'Gets the index of this Joker.',
             lua: `(function()
     local my_pos = nil
