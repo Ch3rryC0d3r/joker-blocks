@@ -2,11 +2,11 @@ I'm tryna make an intuitive, interesting, and easy way to create Balatro Mods wi
 
 If you wanna try it out, you can tinker around with it right [here](https://ch3rryc0d3r.github.io/joker-blocks/)! (I update it pretty frequently too!)
 Have any suggestions? 
-You can Drop em in the [Suggestions Forum](https://discord.com/channels/1434189284511973518/1434198481572204804) on the Discord server!
+You can drop em in the [Suggestions Forum](https://discord.com/channels/1434189284511973518/1434198481572204804) on the Discord server!
 
-With this simple block-coding approach we can recreate complex mechanics, like Ceremonial Dagger's `Destroy Joker to the Right` system, with only 4 blocks!
+With this simple block-coding approach we can recreate complex mechanics, like Ceremonial Dagger's `Destroy Joker to the Right` system, with <20 blocks!
 
-<img width="691" height="142" alt="image" src="https://github.com/user-attachments/assets/c43aeb3c-94d5-4868-a549-0ce769e13a7a" />
+<img width="1081" height="246" alt="image" src="https://github.com/user-attachments/assets/01acb2d2-6d4e-4723-8571-23e26b955f2c" />
 
 We can also recreate `Perkeo`'s `Create Negative Copy of a random consumeable` system very easily, with only 4 blocks
 
