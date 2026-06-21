@@ -1,9 +1,8 @@
 I'm tryna make an intuitive, interesting, and easy way to create Balatro Mods without touching any Lua code at all!
 
-If you wanna try it out, you can mess around with it right [here](https://ch3rryc0d3r.github.io/joker-blocks/). I update it basically every day.
-Got suggestions? Drop ‘em in the [Suggestions Forum](https://discord.com/channels/1434189284511973518/1434198481572204804) on my Discord server!
-
-Wanna join The Team? Just ping me (@justauserr13) on my [Server](https://discord.gg/s27wD9D3n7)! (probably in #general).
+If you wanna try it out, you can tinker around with it right [here](https://ch3rryc0d3r.github.io/joker-blocks/)! (I update it pretty frequently too!)
+Have any suggestions? 
+You can Drop em in the [Suggestions Forum](https://discord.com/channels/1434189284511973518/1434198481572204804) on the Discord server!
 
 With this simple block-coding approach we can recreate complex mechanics, like Ceremonial Dagger's `Destroy Joker to the Right` system, with only 4 blocks!
 
